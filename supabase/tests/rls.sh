@@ -3,8 +3,10 @@
 # using real user JWTs (exactly the path the browser takes).
 set -uo pipefail
 
-API="http://127.0.0.1:54321"
-ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+# Defaults to the local stack; override to run against a deployed project:
+#   API_URL=https://<ref>.supabase.co ANON_KEY=<key> bash <this script>
+API="${API_URL:-http://127.0.0.1:54321}"
+ANON="${ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0}"
 
 pass=0; fail=0
 ok(){ echo "  PASS  $1"; pass=$((pass+1)); }

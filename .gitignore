@@ -15,7 +15,11 @@ dist-ssr
 # Secrets — never commit. Only .env.example belongs in git.
 .env
 .env.*
+.env*
 !.env.example
+
+# Vercel CLI local state
+.vercel
 
 # Supabase local state
 supabase/.temp
@@ -32,3 +36,4 @@ dev.db
 *.njsproj
 *.sln
 *.sw?
+
