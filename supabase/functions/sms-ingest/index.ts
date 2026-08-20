@@ -40,6 +40,59 @@ async function sha256Hex(input: string): Promise<string> {
     .join('')
 }
 
+type IngestPayload = {
+  sender?: string
+  body?: string
+  received_at?: string
+  device?: string
+}
+
+/**
+ * Reads the payload as JSON or as form encoding.
+ *
+ * Form encoding matters more than it looks. A forwarder app builds its JSON by
+ * pasting the raw SMS into a template, and bank messages routinely contain
+ * quotes, backslashes and newlines — none of which get escaped, so the JSON
+ * arrives malformed and the message is lost. Form encoding is escaped by the
+ * HTTP client itself, so it cannot be broken by the message text.
+ */
+function parsePayload(
+  raw: string,
+  contentType: string | null,
+): IngestPayload | null {
+  const type = (contentType ?? '').toLowerCase()
+
+  if (type.includes('application/x-www-form-urlencoded')) {
+    const form = new URLSearchParams(raw)
+    return {
+      sender: form.get('sender') ?? undefined,
+      body: form.get('body') ?? undefined,
+      received_at: form.get('received_at') ?? undefined,
+      device: form.get('device') ?? undefined,
+    }
+  }
+
+  try {
+    return JSON.parse(raw) as IngestPayload
+  } catch {
+    // Some clients send form data without setting the header. Try that before
+    // giving up, rather than dropping a message over a missing content-type.
+    if (raw.includes('=') && raw.includes('sender')) {
+      const form = new URLSearchParams(raw)
+      const sender = form.get('sender')
+      if (sender) {
+        return {
+          sender,
+          body: form.get('body') ?? undefined,
+          received_at: form.get('received_at') ?? undefined,
+          device: form.get('device') ?? undefined,
+        }
+      }
+    }
+    return null
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
   if (req.method !== 'POST') return json({ error: 'POST only' }, 405)
@@ -55,17 +108,8 @@ Deno.serve(async (req) => {
     return json({ error: 'payload too large' }, 413)
   }
 
-  let payload: {
-    sender?: string
-    body?: string
-    received_at?: string
-    device?: string
-  }
-  try {
-    payload = JSON.parse(rawBody)
-  } catch {
-    return json({ error: 'invalid json' }, 400)
-  }
+  const payload = parsePayload(rawBody, req.headers.get('content-type'))
+  if (!payload) return json({ error: 'could not read request body' }, 400)
 
   const sender = payload.sender?.trim()
   const body = payload.body?.trim()
@@ -83,7 +127,7 @@ Deno.serve(async (req) => {
   const tokenHash = await sha256Hex(token)
   const { data: tokenRow, error: tokenError } = await db
     .from('ingest_tokens')
-    .select('id, user_id, revoked_at')
+    .select('id, user_id, revoked_at, use_count')
     .eq('token_hash', tokenHash)
     .maybeSingle()
 
@@ -96,11 +140,22 @@ Deno.serve(async (req) => {
   }
   const userId = tokenRow.user_id as string
 
-  // Fire-and-forget: failing to record usage must not drop the message.
-  void db
-    .from('ingest_tokens')
-    .update({ last_used_at: new Date().toISOString() })
-    .eq('id', tokenRow.id)
+  // Awaited, not fire-and-forget: an un-awaited promise loses its race with
+  // isolate teardown, so `last_used_at` silently never updated and the setup
+  // screen kept reporting "Never used" for a device that was working. The
+  // catch preserves the original intent -- failing to record usage must never
+  // cost us the message.
+  try {
+    await db
+      .from('ingest_tokens')
+      .update({
+        last_used_at: new Date().toISOString(),
+        use_count: (tokenRow.use_count ?? 0) + 1,
+      })
+      .eq('id', tokenRow.id)
+  } catch (err) {
+    console.error('could not record token usage:', err)
+  }
 
   const receivedAt = payload.received_at
     ? new Date(payload.received_at).toISOString()

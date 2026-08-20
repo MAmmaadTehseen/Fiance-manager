@@ -211,15 +211,35 @@ export function ConnectPhone() {
             set to your token.
           </li>
           <li>
-            Set content type <code className="font-mono text-xs">application/json</code>{' '}
+            Set content type{' '}
+            <code className="font-mono text-xs">
+              application/x-www-form-urlencoded
+            </code>{' '}
             and body:
             <pre className="mt-1.5 overflow-x-auto rounded-lg bg-muted p-2.5 font-mono text-xs">
-              {`{"sender":"[sms_sender]","body":"[sms_message]"}`}
+              {`sender=[sms_sender]&body=[sms_message]`}
             </pre>
+            Insert the <strong>[sms_sender]</strong> and{' '}
+            <strong>[sms_message]</strong> parts from MacroDroid&rsquo;s magic
+            text picker rather than typing them.
           </li>
-          <li>Save and enable it. Send yourself a test SMS to check.</li>
+          <li>
+            Save, and make sure the macro is <strong>enabled</strong>. Use{' '}
+            <strong>Test Actions</strong> in the macro editor to fire the
+            request without waiting for a real SMS — that separates a broken
+            trigger from a broken request.
+          </li>
+          <li>
+            Then have someone text you, or wait for a bank message. The trigger
+            is <em>SMS received</em>, so a message you send will not fire it.
+          </li>
         </ol>
         <p className="mt-3 text-xs text-muted-foreground">
+          Form encoding is deliberate: bank messages contain quotes and line
+          breaks that silently break a hand-built JSON body. JSON still works if
+          you prefer it.
+        </p>
+        <p className="mt-2 text-xs text-muted-foreground">
           Messages that aren&rsquo;t from a bank are ignored, and anything the
           app can&rsquo;t read is kept so a rule can rescue it later. Nothing is
           thrown away.
