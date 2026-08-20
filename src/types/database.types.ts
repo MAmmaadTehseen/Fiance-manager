@@ -85,6 +85,67 @@ export type Database = {
         }
         Relationships: []
       }
+      balance_assertions: {
+        Row: {
+          account_id: string
+          acknowledged_at: string | null
+          asserted_balance: number
+          computed_balance: number | null
+          created_at: string
+          drift: number | null
+          id: string
+          observed_at: string
+          sms_message_id: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          acknowledged_at?: string | null
+          asserted_balance: number
+          computed_balance?: number | null
+          created_at?: string
+          drift?: number | null
+          id?: string
+          observed_at?: string
+          sms_message_id?: string | null
+          user_id?: string
+        }
+        Update: {
+          account_id?: string
+          acknowledged_at?: string | null
+          asserted_balance?: number
+          computed_balance?: number | null
+          created_at?: string
+          drift?: number | null
+          id?: string
+          observed_at?: string
+          sms_message_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "balance_assertions_account_id_fkey"
+            columns: ["account_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "account_balances"
+            referencedColumns: ["account_id", "user_id"]
+          },
+          {
+            foreignKeyName: "balance_assertions_account_id_fkey"
+            columns: ["account_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "balance_assertions_sms_message_id_fkey"
+            columns: ["sms_message_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "sms_messages"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           archived_at: string | null
@@ -141,6 +202,39 @@ export type Database = {
           },
         ]
       }
+      ingest_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          last_used_at: string | null
+          revoked_at: string | null
+          token_hash: string
+          use_count: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          token_hash: string
+          use_count?: number
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          token_hash?: string
+          use_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       merchants: {
         Row: {
           created_at: string
@@ -182,6 +276,54 @@ export type Database = {
           },
         ]
       }
+      parser_templates: {
+        Row: {
+          bank_key: string
+          country: string
+          created_at: string
+          enabled: boolean
+          field_patterns: Json
+          id: string
+          kind: Database["public"]["Enums"]["template_kind"]
+          label: string
+          match_pattern: string
+          priority: number
+          sample: string | null
+          sender_pattern: string
+          user_id: string | null
+        }
+        Insert: {
+          bank_key: string
+          country?: string
+          created_at?: string
+          enabled?: boolean
+          field_patterns?: Json
+          id?: string
+          kind?: Database["public"]["Enums"]["template_kind"]
+          label: string
+          match_pattern: string
+          priority?: number
+          sample?: string | null
+          sender_pattern: string
+          user_id?: string | null
+        }
+        Update: {
+          bank_key?: string
+          country?: string
+          created_at?: string
+          enabled?: boolean
+          field_patterns?: Json
+          id?: string
+          kind?: Database["public"]["Enums"]["template_kind"]
+          label?: string
+          match_pattern?: string
+          priority?: number
+          sample?: string | null
+          sender_pattern?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -212,6 +354,92 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sms_messages: {
+        Row: {
+          body: string
+          body_hash: string
+          created_at: string
+          device_label: string | null
+          error: string | null
+          id: string
+          matched_template_id: string | null
+          parse_status: Database["public"]["Enums"]["sms_parse_status"]
+          parsed: Json | null
+          pending_last4: string | null
+          received_at: string
+          sender: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          body_hash: string
+          created_at?: string
+          device_label?: string | null
+          error?: string | null
+          id?: string
+          matched_template_id?: string | null
+          parse_status?: Database["public"]["Enums"]["sms_parse_status"]
+          parsed?: Json | null
+          pending_last4?: string | null
+          received_at?: string
+          sender: string
+          user_id?: string
+        }
+        Update: {
+          body?: string
+          body_hash?: string
+          created_at?: string
+          device_label?: string | null
+          error?: string | null
+          id?: string
+          matched_template_id?: string | null
+          parse_status?: Database["public"]["Enums"]["sms_parse_status"]
+          parsed?: Json | null
+          pending_last4?: string | null
+          received_at?: string
+          sender?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_messages_matched_template_id_fkey"
+            columns: ["matched_template_id"]
+            isOneToOne: false
+            referencedRelation: "parser_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           account_id: string
@@ -226,6 +454,7 @@ export type Database = {
           merchant_id: string | null
           note: string | null
           occurred_at: string
+          sms_message_id: string | null
           source: Database["public"]["Enums"]["transaction_source"]
           status: Database["public"]["Enums"]["transaction_status"]
           tags: string[]
@@ -246,6 +475,7 @@ export type Database = {
           merchant_id?: string | null
           note?: string | null
           occurred_at?: string
+          sms_message_id?: string | null
           source?: Database["public"]["Enums"]["transaction_source"]
           status?: Database["public"]["Enums"]["transaction_status"]
           tags?: string[]
@@ -266,6 +496,7 @@ export type Database = {
           merchant_id?: string | null
           note?: string | null
           occurred_at?: string
+          sms_message_id?: string | null
           source?: Database["public"]["Enums"]["transaction_source"]
           status?: Database["public"]["Enums"]["transaction_status"]
           tags?: string[]
@@ -316,6 +547,13 @@ export type Database = {
             referencedRelation: "merchants"
             referencedColumns: ["id", "user_id"]
           },
+          {
+            foreignKeyName: "transactions_sms_message_id_fkey"
+            columns: ["sms_message_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "sms_messages"
+            referencedColumns: ["id", "user_id"]
+          },
         ]
       }
     }
@@ -353,6 +591,13 @@ export type Database = {
     Enums: {
       account_type: "bank" | "wallet" | "cash" | "credit_card" | "savings"
       category_kind: "expense" | "income"
+      sms_parse_status:
+        | "parsed"
+        | "needs_account"
+        | "unmatched"
+        | "ignored"
+        | "duplicate"
+      template_kind: "purchase" | "credit" | "atm" | "fee" | "ignore"
       transaction_source:
         | "manual"
         | "sms"
@@ -494,6 +739,14 @@ export const Constants = {
     Enums: {
       account_type: ["bank", "wallet", "cash", "credit_card", "savings"],
       category_kind: ["expense", "income"],
+      sms_parse_status: [
+        "parsed",
+        "needs_account",
+        "unmatched",
+        "ignored",
+        "duplicate",
+      ],
+      template_kind: ["purchase", "credit", "atm", "fee", "ignore"],
       transaction_source: [
         "manual",
         "sms",

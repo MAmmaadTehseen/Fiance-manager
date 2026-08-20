@@ -12,7 +12,11 @@
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
-    "db:types": "supabase gen types typescript --local > src/types/database.types.ts"
+    "db:types": "supabase gen types typescript --local > src/types/database.types.ts",
+    "functions:serve": "supabase functions serve sms-ingest",
+    "test:rls": "bash supabase/tests/rls.sh",
+    "test:parser": "bash supabase/tests/parser.sh",
+    "test:ingest": "bash supabase/tests/ingest.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

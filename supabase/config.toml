@@ -412,3 +412,9 @@ enabled = true
 # declarative_schema_path = "./schemas"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# The phone forwarding bank SMS authenticates with its own ingest token, not a
+# Supabase JWT — MacroDroid cannot hold a session. The function verifies that
+# token itself before touching anything.
+[functions.sms-ingest]
+verify_jwt = false

@@ -1,0 +1,148 @@
+#!/usr/bin/env bash
+# End-to-end test of the SMS ingest pipeline, driving the real Edge Function
+# over HTTP exactly as the user's phone will.
+#
+# Requires both the stack and the function server:
+#   npm run db:start
+#   npm run functions:serve
+set -uo pipefail
+
+API="http://127.0.0.1:54321"
+FN="$API/functions/v1/sms-ingest"
+ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0"
+
+pass=0; fail=0
+ok(){ echo "  PASS  $1"; pass=$((pass+1)); }
+no(){ echo "  FAIL  $1"; echo "        $2"; fail=$((fail+1)); }
+
+sha256(){ node -e "console.log(require('crypto').createHash('sha256').update(process.argv[1]).digest('hex'))" "$1"; }
+
+rest(){ # method path token [body]
+  local m=$1 p=$2 t=$3 b=${4:-}
+  if [ -n "$b" ]; then
+    curl -s -X "$m" "$API/rest/v1/$p" -H "apikey: $ANON" -H "Authorization: Bearer $t" \
+      -H "Content-Type: application/json" -H "Prefer: return=representation" -d "$b"
+  else
+    curl -s -X "$m" "$API/rest/v1/$p" -H "apikey: $ANON" -H "Authorization: Bearer $t"
+  fi
+}
+
+send(){ # token sender body [received_at]
+  local tok=$1 sender=$2 body=$3 when=${4:-}
+  local payload
+  payload=$(node -e '
+    const [sender, body, when] = process.argv.slice(1)
+    const o = { sender, body, device: "test-harness" }
+    if (when) o.received_at = when
+    console.log(JSON.stringify(o))
+  ' "$sender" "$body" "$when")
+  curl -s -X POST "$FN" -H "X-Ingest-Token: $tok" -H "Content-Type: application/json" -d "$payload"
+}
+
+field(){ node -e "try{console.log(JSON.parse(process.argv[1])[process.argv[2]] ?? '')}catch{console.log('')}" "$1" "$2"; }
+
+stamp=$(cat /proc/sys/kernel/random/uuid 2>/dev/null | cut -c1-8 || echo $$)
+EMAIL_A="ingest-a-$stamp@example.com"
+EMAIL_B="ingest-b-$stamp@example.com"
+
+echo "== setup =="
+TOK_A=$(curl -s "$API/auth/v1/signup" -H "apikey: $ANON" -H "Content-Type: application/json" \
+  -d "{\"email\":\"$EMAIL_A\",\"password\":\"password123\"}" | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
+TOK_B=$(curl -s "$API/auth/v1/signup" -H "apikey: $ANON" -H "Content-Type: application/json" \
+  -d "{\"email\":\"$EMAIL_B\",\"password\":\"password123\"}" | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4)
+[ -n "$TOK_A" ] && [ -n "$TOK_B" ] && ok "two users signed up" || { no "signup" "no token"; exit 1; }
+
+BANK=$(rest POST "accounts" "$TOK_A" \
+  '{"name":"HBL current","type":"bank","last4":"4821","opening_balance":50000}')
+BANK_ID=$(field "$(echo "$BANK" | node -e 'const d=JSON.parse(require("fs").readFileSync(0,"utf8"));console.log(JSON.stringify(d[0]||{}))')" id)
+[ -n "$BANK_ID" ] && ok "bank account created (last4 4821)" || { no "account" "$BANK"; exit 1; }
+
+# The browser generates the token, stores only its hash, and shows it once.
+RAW_TOKEN="fmt_$(node -e 'console.log(require("crypto").randomBytes(24).toString("base64url"))')"
+HASH=$(sha256 "$RAW_TOKEN")
+TOKROW=$(rest POST "ingest_tokens" "$TOK_A" "{\"token_hash\":\"$HASH\",\"label\":\"Test phone\"}")
+echo "$TOKROW" | grep -q '"id"' && ok "ingest token issued" || { no "token" "$TOKROW"; exit 1; }
+
+echo "== auth =="
+BAD=$(send "fmt_not_a_real_token" "HBL" "Your HBL Debit Card ending 4821 was used for PKR 100.00 at X on 12-Aug-25.")
+[ "$(field "$BAD" error)" = "invalid or revoked token" ] \
+  && ok "a bogus token is rejected" || no "bad token accepted" "$BAD"
+
+NOTOK=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$FN" -H "Content-Type: application/json" -d '{}')
+[ "$NOTOK" = "401" ] && ok "no token is rejected (401)" || no "missing token" "http $NOTOK"
+
+echo "== first sighting of a merchant asks a question =="
+R1=$(send "$RAW_TOKEN" "HBL" "Your HBL Debit Card ending 4821 was used for PKR 2,500.00 at CAFE ZOUK on 12-Aug-25. Available balance: PKR 45,678.00")
+[ "$(field "$R1" status)" = "needs_review" ] \
+  && ok "unknown merchant -> needs_review" || no "expected needs_review" "$R1"
+[ "$(field "$R1" amount)" = "2500" ] && ok "amount 2500 (not the balance)" || no "amount" "$R1"
+[ "$(field "$R1" merchant)" = "Cafe Zouk" ] && ok "merchant 'Cafe Zouk'" || no "merchant" "$R1"
+
+echo "== the same message twice is one transaction =="
+R2=$(send "$RAW_TOKEN" "HBL" "Your HBL Debit Card ending 4821 was used for PKR 2,500.00 at CAFE ZOUK on 12-Aug-25. Available balance: PKR 45,678.00")
+[ "$(field "$R2" status)" = "duplicate" ] && ok "resend is deduplicated" || no "duplicate not caught" "$R2"
+
+echo "== teach it once, then it stays quiet =="
+FOOD_ID=$(rest GET "categories?select=id&slug=eq.eating-out" "$TOK_A" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+MERCH_ID=$(rest GET "merchants?select=id&raw_name=eq.CAFE%20ZOUK" "$TOK_A" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+[ -n "$MERCH_ID" ] && ok "merchant was learned automatically" || no "merchant not stored" "-"
+rest PATCH "merchants?id=eq.$MERCH_ID" "$TOK_A" "{\"default_category_id\":\"$FOOD_ID\"}" > /dev/null
+
+R3=$(send "$RAW_TOKEN" "HBL" "Your HBL Debit Card ending 4821 was used for PKR 800.00 at CAFE ZOUK on 13-Aug-25. Available balance: PKR 44,878.00")
+[ "$(field "$R3" status)" = "filed" ] \
+  && ok "known merchant -> filed silently, no question asked" || no "expected filed" "$R3"
+
+echo "== OTPs never become money =="
+BEFORE=$(rest GET "transactions?select=id" "$TOK_A" | grep -o '"id"' | wc -l)
+R4=$(send "$RAW_TOKEN" "HBL" "Your OTP for login is 123456. Do not share it with anyone.")
+[ "$(field "$R4" status)" = "ignored" ] && ok "OTP is ignored" || no "OTP not ignored" "$R4"
+R5=$(send "$RAW_TOKEN" "HBL" "OTP 987654 to authorise PKR 50,000.00 transfer. Valid for 5 minutes.")
+[ "$(field "$R5" status)" = "ignored" ] && ok "OTP quoting an amount is still ignored" || no "OTP with amount" "$R5"
+AFTER=$(rest GET "transactions?select=id" "$TOK_A" | grep -o '"id"' | wc -l)
+[ "$BEFORE" = "$AFTER" ] && ok "no transactions created by OTPs" || no "OTP created a transaction" "$BEFORE -> $AFTER"
+
+echo "== ATM withdrawal becomes a transfer into Cash =="
+CASH_ID=$(rest GET "accounts?select=id&type=eq.cash" "$TOK_A" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+R6=$(send "$RAW_TOKEN" "HBL" "Cash withdrawal of PKR 10,000.00 from ATM using card ending 4821 on 14-Aug-25. Available balance PKR 34,878.00")
+[ "$(field "$R6" type)" = "transfer" ] && ok "ATM -> transfer" || no "ATM type" "$R6"
+CASH_BAL=$(rest GET "account_balances?select=balance&account_id=eq.$CASH_ID" "$TOK_A")
+echo "$CASH_BAL" | grep -q '"balance":10000' \
+  && ok "cash balance rose to 10000 without anyone typing it" || no "cash balance" "$CASH_BAL"
+
+echo "== an unknown card is asked about, not guessed =="
+R7=$(send "$RAW_TOKEN" "HBL" "Your HBL Debit Card ending 9999 was used for PKR 300.00 at SHELL on 14-Aug-25. Available balance: PKR 10,000.00")
+[ "$(field "$R7" status)" = "needs_account" ] && ok "unknown last4 -> needs_account" || no "expected needs_account" "$R7"
+[ "$(field "$R7" last4)" = "9999" ] && ok "reports which card it was" || no "last4 not reported" "$R7"
+
+echo "== balance drift is detected =="
+DRIFT=$(rest GET "balance_assertions?select=asserted_balance,computed_balance,drift&order=observed_at.desc&limit=1" "$TOK_A")
+echo "$DRIFT" | grep -q '"asserted_balance"' && ok "balance assertion recorded" || no "no assertion" "$DRIFT"
+
+echo "== income =="
+R8=$(send "$RAW_TOKEN" "Meezan" "Dear Customer, your a/c ****4821 has been credited with PKR 50,000.00 on 15/08/2025. Avl Bal: PKR 84,878.00")
+[ "$(field "$R8" type)" = "income" ] && ok "credit -> income" || no "credit type" "$R8"
+
+echo "== a message we cannot read is kept, not dropped =="
+R9=$(send "$RAW_TOKEN" "MOM" "beta are you coming home for dinner?")
+[ "$(field "$R9" status)" = "unmatched" ] && ok "unparseable message -> unmatched" || no "expected unmatched" "$R9"
+MSG_ID=$(field "$R9" message_id)
+STORED=$(rest GET "sms_messages?select=body&id=eq.$MSG_ID" "$TOK_A")
+echo "$STORED" | grep -q "dinner" && ok "original text kept verbatim for re-processing" || no "body lost" "$STORED"
+
+echo "== isolation =="
+B_MSGS=$(rest GET "sms_messages?select=id" "$TOK_B")
+[ "$B_MSGS" = "[]" ] && ok "B cannot see A's messages" || no "sms leak" "$B_MSGS"
+B_TOKENS=$(rest GET "ingest_tokens?select=token_hash" "$TOK_B")
+[ "$B_TOKENS" = "[]" ] && ok "B cannot see A's ingest tokens" || no "token leak" "$B_TOKENS"
+
+echo "== a client cannot forge pipeline state =="
+FORGE=$(rest POST "sms_messages" "$TOK_A" \
+  '{"sender":"HBL","body":"forged","received_at":"2026-08-20T10:00:00Z","parse_status":"parsed"}')
+echo "$FORGE" | grep -qi '42501\|permission denied\|column' \
+  && ok "client cannot set parse_status on insert" || no "parse_status forgeable" "$FORGE"
+
+echo
+echo "-------------------------------"
+echo " passed: $pass   failed: $fail"
+echo "-------------------------------"
+[ "$fail" -eq 0 ]
