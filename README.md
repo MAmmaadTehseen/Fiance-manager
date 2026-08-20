@@ -40,8 +40,8 @@ at the local stack is already in place for development.
 | `npm run db:reset` | Recreate the DB and reapply every migration |
 | `npm run db:types` | Regenerate `src/types/database.types.ts` from the live schema |
 
-Local Supabase Studio runs at http://127.0.0.1:54323, and sign-up emails are
-caught by Mailpit at http://127.0.0.1:54324 rather than being sent.
+Local Supabase Studio runs at <http://127.0.0.1:54323>, and sign-up emails are
+caught by Mailpit at <http://127.0.0.1:54324> rather than being sent.
 
 ## Data model notes
 
@@ -66,10 +66,20 @@ bash supabase/tests/rls.sh
 ```
 
 `rls.sh` signs up two real users through the auth API and drives PostgREST with
-their JWTs — the same path the browser takes. It asserts new-user seeding, the
-balance arithmetic (including the ATM → cash → spend loop), the transfer and
-amount constraints, and that neither user can read, write, or reference
-anything belonging to the other. It should report **20 passed, 0 failed**.
+their JWTs — the same path the browser takes. It should report
+**32 passed, 0 failed**, covering:
+
+- new-user seeding, and balance arithmetic including the ATM → cash → spend loop
+- the transfer and positive-amount constraints
+- neither user can read, write, reference, or delete anything of the other's —
+  through tables *and* through the balance views
+- ownership cannot be spoofed on insert or moved on update
+- the `SECURITY DEFINER` signup function is not callable over the API, and
+  `auth.users` is not reachable
+- `anon` is blocked on every table and view
+
+Run it after any schema change. If you add a table, add its RLS policy, its
+GRANT, its composite FKs — and a case here.
 
 ## Regenerating types
 

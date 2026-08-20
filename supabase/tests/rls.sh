@@ -133,10 +133,64 @@ A_BAL=$(rest GET "account_balances?select=name,balance" "$TOK_A")
 echo "$A_BAL" | grep -q '"balance":55500' \
   && ok "A's bank balance unchanged by B's attempts" || no "A balance corrupted" "$A_BAL"
 
+echo "== ownership cannot be spoofed or moved =="
+UID_A=$(curl -s "$API/auth/v1/user" -H "apikey: $ANON" -H "Authorization: Bearer $TOK_A" \
+  | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+
+# B claims a row is A's on the way in.
+SPOOF=$(rest POST "transactions" "$TOK_B" \
+  "{\"account_id\":\"$B_ACC_ID\",\"type\":\"expense\",\"amount\":10,\"user_id\":\"$UID_A\"}")
+echo "$SPOOF" | grep -qi '42501\|violates row-level security\|23503' \
+  && ok "B cannot insert a row owned by A" || no "user_id spoof on insert" "$SPOOF"
+
+# B tries to hand one of their own rows to A.
+B_TX_ID=$(rest POST "transactions" "$TOK_B" \
+  "{\"account_id\":\"$B_ACC_ID\",\"type\":\"expense\",\"amount\":11}" \
+  | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+GIVE=$(rest PATCH "transactions?id=eq.$B_TX_ID" "$TOK_B" "{\"user_id\":\"$UID_A\"}")
+echo "$GIVE" | grep -qi 'immutable\|42501\|violates row-level security' \
+  && ok "B cannot transfer ownership of a row to A" || no "ownership transfer" "$GIVE"
+
+echo "== destructive reach =="
+DEL=$(curl -s -o /dev/null -w '%{http_code}' -X DELETE \
+  "$API/rest/v1/transactions?id=neq.00000000-0000-0000-0000-000000000000" \
+  -H "apikey: $ANON" -H "Authorization: Bearer $TOK_B")
+A_STILL=$(rest GET "transactions?select=id" "$TOK_A" | grep -o '"id"' | wc -l)
+[ "$A_STILL" -ge 4 ] \
+  && ok "B's blanket DELETE left A's $A_STILL transactions intact (http $DEL)" \
+  || no "B deleted A's rows" "A has $A_STILL left"
+
+B_PROF=$(rest GET "profiles?select=id,display_name" "$TOK_B")
+echo "$B_PROF" | grep -q "$UID_A" && no "B read A's profile" "$B_PROF" \
+  || ok "B cannot read A's profile"
+
+DELPROF=$(curl -s -o /dev/null -w '%{http_code}' -X DELETE \
+  "$API/rest/v1/profiles?id=neq.00000000-0000-0000-0000-000000000000" \
+  -H "apikey: $ANON" -H "Authorization: Bearer $TOK_B")
+[ "$DELPROF" = "401" ] || [ "$DELPROF" = "403" ] || [ "$DELPROF" = "404" ] \
+  && ok "profiles cannot be deleted (http $DELPROF)" \
+  || no "profile delete allowed" "http $DELPROF"
+
+echo "== function and schema exposure =="
+RPC=$(curl -s "$API/rest/v1/rpc/handle_new_user" -X POST -H "apikey: $ANON" \
+  -H "Authorization: Bearer $TOK_B" -H "Content-Type: application/json" -d '{}')
+echo "$RPC" | grep -qi 'not find\|permission denied\|does not exist\|42883\|PGRST' \
+  && ok "SECURITY DEFINER trigger fn is not callable over the API" \
+  || no "handle_new_user callable" "$RPC"
+
+AUTHT=$(rest GET "users?select=id" "$TOK_B")
+echo "$AUTHT" | grep -qi 'not find\|does not exist\|PGRST205' \
+  && ok "auth.users is not reachable through PostgREST" || no "auth.users exposed" "$AUTHT"
+
 echo "== ANON must see nothing =="
-ANON_TX=$(curl -s "$API/rest/v1/transactions?select=id" -H "apikey: $ANON")
-echo "$ANON_TX" | grep -qi 'JWT\|permission denied\|^\[\]$' \
-  && ok "anonymous request returns no data" || no "anon leak" "$ANON_TX"
+for t in transactions accounts categories profiles merchants account_balances; do
+  R=$(curl -s "$API/rest/v1/$t?select=*" -H "apikey: $ANON")
+  if echo "$R" | grep -qi 'JWT\|permission denied\|PGRST\|42501' || [ "$R" = "[]" ]; then
+    ok "anon blocked on $t"
+  else
+    no "anon leak on $t" "$R"
+  fi
+done
 
 echo
 echo "-------------------------------"
