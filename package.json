@@ -13,7 +13,7 @@
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local > src/types/database.types.ts",
-    "functions:serve": "supabase functions serve sms-ingest",
+    "functions:serve": "supabase functions serve",
     "test:rls": "bash supabase/tests/rls.sh",
     "test:parser": "bash supabase/tests/parser.sh",
     "test:ingest": "bash supabase/tests/ingest.sh"

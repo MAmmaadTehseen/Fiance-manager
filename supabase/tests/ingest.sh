@@ -129,6 +129,48 @@ MSG_ID=$(field "$R9" message_id)
 STORED=$(rest GET "sms_messages?select=body&id=eq.$MSG_ID" "$TOK_A")
 echo "$STORED" | grep -q "dinner" && ok "original text kept verbatim for re-processing" || no "body lost" "$STORED"
 
+echo "== naming the card resolves the backlog =="
+reprocess(){ # jwt [body]
+  curl -s -X POST "$API/functions/v1/sms-reprocess" -H "apikey: $ANON" \
+    -H "Authorization: Bearer $1" -H "Content-Type: application/json" -d "${2:-{\}}"
+}
+# Card 9999 was parked as needs_account above. Name it, then replay.
+rest POST "accounts" "$TOK_A" \
+  '{"name":"HBL savings","type":"savings","last4":"9999","opening_balance":0}' > /dev/null
+RP=$(reprocess "$TOK_A")
+[ "$(field "$RP" processed)" != "0" ] && ok "reprocess picked up parked messages" || no "nothing reprocessed" "$RP"
+SHELL_TX=$(rest GET "transactions?select=amount&amount=eq.300" "$TOK_A")
+echo "$SHELL_TX" | grep -q '"amount":300' \
+  && ok "the parked card-9999 message became a transaction" || no "backlog not resolved" "$SHELL_TX"
+
+echo "== a user rule beats the built-ins, and fixes past messages =="
+WEIRD='ACME BANK: Rs 4,321 ka kharcha at NADIR STORE. Card 4821. Bqaya Rs 9,000'
+R10=$(send "$RAW_TOKEN" "ACMEBNK" "$WEIRD")
+[ "$(field "$R10" status)" = "unmatched" ] && ok "unknown format -> unmatched" || no "expected unmatched" "$R10"
+
+NEWRULE=$(rest POST "parser_templates" "$TOK_A" '{
+  "bank_key":"acme","label":"My ACME rule","sender_pattern":"ACMEBNK",
+  "match_pattern":"kharcha",
+  "field_patterns":{"amount":"Rs\\s*([\\d,]+)\\s*ka kharcha","merchant":"at\\s+([A-Za-z0-9 ]+?)\\.","last4":"Card\\s*(\\d{4})","balance":"Bqaya\\s*Rs\\s*([\\d,]+)"},
+  "kind":"purchase","priority":1}')
+echo "$NEWRULE" | grep -q '"id"' \
+  && ok "user added their own rule" || no "rule insert rejected" "$NEWRULE"
+
+RP2=$(reprocess "$TOK_A")
+ACME=$(rest GET "transactions?select=amount&amount=eq.4321" "$TOK_A")
+echo "$ACME" | grep -q '"amount":4321' \
+  && ok "the previously unreadable message now parses (4321)" || no "user rule not applied" "$RP2"
+
+echo "== reprocess cannot reach another user's messages =="
+A_MSG=$(rest GET "sms_messages?select=id&limit=1" "$TOK_A" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+CROSS=$(reprocess "$TOK_B" "{\"message_id\":\"$A_MSG\"}")
+[ "$(field "$CROSS" processed)" = "0" ] \
+  && ok "B reprocessing A's message id does nothing" || no "cross-user reprocess" "$CROSS"
+
+NOJWT=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$API/functions/v1/sms-reprocess" \
+  -H "apikey: $ANON" -H "Content-Type: application/json" -d '{}')
+[ "$NOJWT" = "401" ] && ok "reprocess requires a signed-in user (401)" || no "reprocess auth" "http $NOJWT"
+
 echo "== isolation =="
 B_MSGS=$(rest GET "sms_messages?select=id" "$TOK_B")
 [ "$B_MSGS" = "[]" ] && ok "B cannot see A's messages" || no "sms leak" "$B_MSGS"

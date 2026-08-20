@@ -6,6 +6,7 @@ import { SignUpPage } from '@/features/auth/SignUpPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { AccountsPage } from '@/features/accounts/AccountsPage'
 import { TransactionsPage } from '@/features/transactions/TransactionsPage'
+import { InboxPage } from '@/features/inbox/InboxPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 
 function FullPageSpinner() {
@@ -40,6 +41,7 @@ export function App() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/transactions" element={<TransactionsPage />} />
+        <Route path="/inbox" element={<InboxPage />} />
         <Route path="/accounts" element={<AccountsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
