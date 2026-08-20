@@ -58,9 +58,18 @@ export function ConnectPhone() {
   const [lanHost, setLanHost] = useState('')
 
   const local = isLoopback(webhookUrl)
+
+  // Accepts either a bare host ("192.168.1.5:54321") or a full origin
+  // ("https://something.trycloudflare.com"). A tunnel is https, a LAN address
+  // is http, so the scheme has to come from what was typed rather than be
+  // assumed.
+  const reachableAt = lanHost.trim().replace(/\/+$/, '')
+  const path = webhookUrl.slice(webhookUrl.indexOf('/functions/'))
   const effectiveUrl =
-    local && lanHost.trim()
-      ? webhookUrl.replace(/\/\/[^/]+/, `//${lanHost.trim()}`)
+    local && reachableAt
+      ? reachableAt.includes('://')
+        ? `${reachableAt}${path}`
+        : `http://${reachableAt}${path}`
       : webhookUrl
 
   async function issue() {
@@ -113,17 +122,18 @@ export function ConnectPhone() {
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             Your phone cannot reach <code className="font-mono">127.0.0.1</code>{' '}
-            — that address means &ldquo;this device&rdquo;. While testing, put
-            this computer&rsquo;s Wi-Fi address here and keep both on the same
-            network. Once deployed, this whole box disappears.
+            — that address means &ldquo;this device&rdquo;. Paste a tunnel URL
+            (from <code className="font-mono">cloudflared</code>) or this
+            computer&rsquo;s Wi-Fi address with its port. Once deployed, this
+            whole box disappears.
           </p>
           <div className="mt-3 flex flex-col gap-1.5">
-            <Label htmlFor="lan-host">Computer&rsquo;s address on Wi-Fi</Label>
+            <Label htmlFor="lan-host">Address your phone can reach</Label>
             <Input
               id="lan-host"
               value={lanHost}
               onChange={(e) => setLanHost(e.target.value)}
-              placeholder="192.168.1.5:54321"
+              placeholder="https://xyz.trycloudflare.com"
               inputMode="url"
               autoCapitalize="off"
               autoCorrect="off"
