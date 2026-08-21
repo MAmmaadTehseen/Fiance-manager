@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 function BatwaB({ fill }: { fill: string }) {
   return (
     <>
-      <rect x="28" y="26" width="9" height="36" fill={fill} />
+      <rect x="28" y="26" width="10" height="36" fill={fill} />
       {/* Each bowl is a right half-ellipse with its counter knocked out. */}
       <path
         fillRule="evenodd"

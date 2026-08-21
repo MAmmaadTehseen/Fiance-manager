@@ -69,7 +69,7 @@ const inEllipse = (x, y, cx, cy, rx, ry) =>
  * A stem plus two bowls, each bowl an ellipse with an elliptical counter.
  */
 function inB(x, y) {
-  if (x >= 28 && x <= 37 && y >= 26 && y <= 62) return true
+  if (x >= 28 && x <= 38 && y >= 26 && y <= 62) return true
 
   const upper =
     x >= 36.5 &&
