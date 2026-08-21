@@ -25,6 +25,7 @@
     "expo-router": "~6.0.12",
     "expo-splash-screen": "^57.0.7",
     "expo-status-bar": "~57.0.1",
+    "expo-system-ui": "^57.0.2",
     "expo-updates": "~29.0.12",
     "react": "19.2.3",
     "react-native": "0.86.2",

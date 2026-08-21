@@ -97,25 +97,44 @@ function inDashedRing(x, y) {
   return (((arc % 8) + 8) % 8) < 2.4
 }
 
-function render(size, { maskable }) {
+function flat(size, colour) {
   const px = Buffer.alloc(size * size * 4)
-  // Maskable icons are cropped to a circle by the launcher, so the artwork
-  // shrinks into the safe zone and the brand fills the whole tile.
-  const scale = size / 88
-  const inset = maskable ? 0.78 : 1
+  for (let i = 0; i < size * size; i++) {
+    px[i * 4] = colour[0]
+    px[i * 4 + 1] = colour[1]
+    px[i * 4 + 2] = colour[2]
+    px[i * 4 + 3] = 255
+  }
+  return png(size, px)
+}
 
+function render(size, options = {}) {
+  const {
+    // Fills the whole tile with brand rather than drawing a disc — launchers
+    // crop adaptive icons to their own shape.
+    fullBleed = false,
+    // Leaves the ground transparent, for adaptive foregrounds and splashes.
+    transparent = false,
+    // Single-colour silhouette for Android's themed icons.
+    monochrome = false,
+    // Shrinks the artwork into the safe zone that cropping leaves visible.
+    inset = 1,
+  } = options
+
+  const px = Buffer.alloc(size * size * 4)
+  const scale = size / 88
   const at = (v) => 44 + (v - 44) / inset
 
   for (let py = 0; py < size; py++) {
     for (let pxi = 0; pxi < size; pxi++) {
-      // Sample at the pixel centre, in 88-unit design space.
       const ux = at((pxi + 0.5) / scale)
       const uy = at((py + 0.5) / scale)
 
       let colour = null
-      if (maskable) colour = BRAND
-      if (Math.hypot(ux - 44, uy - 44) <= 40) colour = BRAND
-      if (inDashedRing(ux, uy)) colour = GOLD
+      if (fullBleed && !transparent) colour = BRAND
+      if (!transparent && Math.hypot(ux - 44, uy - 44) <= 40) colour = BRAND
+      if (transparent && !monochrome && Math.hypot(ux - 44, uy - 44) <= 40) colour = BRAND
+      if (inDashedRing(ux, uy)) colour = monochrome ? ON : GOLD
       if (inB(ux, uy)) colour = ON
 
       const o = (py * size + pxi) * 4
@@ -131,7 +150,31 @@ function render(size, { maskable }) {
 }
 
 const out = process.argv[2] ?? './public'
-writeFileSync(`${out}/pwa-192x192.png`, render(192, { maskable: false }))
-writeFileSync(`${out}/pwa-512x512.png`, render(512, { maskable: false }))
-writeFileSync(`${out}/pwa-maskable-512x512.png`, render(512, { maskable: true }))
-console.log('Batwa icons written to', out)
+const mobile = process.argv.includes('--mobile')
+
+if (mobile) {
+  // Expo SDK 57 asset names. The launcher composes foreground over
+  // background and crops the result, so the foreground is inset and
+  // transparent while the background is a flat brand tile.
+  writeFileSync(`${out}/icon.png`, render(1024, { fullBleed: true, inset: 0.72 }))
+  writeFileSync(
+    `${out}/android-icon-foreground.png`,
+    render(1024, { transparent: true, inset: 0.62 }),
+  )
+  writeFileSync(`${out}/android-icon-background.png`, flat(1024, BRAND))
+  writeFileSync(
+    `${out}/android-icon-monochrome.png`,
+    render(1024, { transparent: true, monochrome: true, inset: 0.62 }),
+  )
+  writeFileSync(`${out}/splash-icon.png`, render(512, { transparent: true }))
+  writeFileSync(`${out}/favicon.png`, render(48, { fullBleed: true, inset: 0.8 }))
+  console.log('Batwa mobile assets written to', out)
+} else {
+  writeFileSync(`${out}/pwa-192x192.png`, render(192))
+  writeFileSync(`${out}/pwa-512x512.png`, render(512))
+  writeFileSync(
+    `${out}/pwa-maskable-512x512.png`,
+    render(512, { fullBleed: true, inset: 0.78 }),
+  )
+  console.log('Batwa icons written to', out)
+}

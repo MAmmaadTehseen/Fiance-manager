@@ -16,8 +16,13 @@ const config: ExpoConfig = {
 
   android: {
     package: 'online.batwa.app',
+    // SDK 57 asset names. The launcher composes foreground over background
+    // and crops to its own shape, so the foreground is inset into the safe
+    // zone and the background is a flat brand tile.
     adaptiveIcon: {
-      foregroundImage: './assets/adaptive-icon.png',
+      foregroundImage: './assets/android-icon-foreground.png',
+      backgroundImage: './assets/android-icon-background.png',
+      monochromeImage: './assets/android-icon-monochrome.png',
       backgroundColor: '#2a473c',
     },
     permissions: [
