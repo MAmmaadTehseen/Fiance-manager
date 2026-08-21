@@ -36,7 +36,7 @@ function verifies that token itself before touching anything.
 
 In **Authentication → URL Configuration**, set:
 
-- **Site URL** — your deployed origin, e.g. `https://finance-manager.vercel.app`
+- **Site URL** — your deployed origin, e.g. `https://batwa.online`
 - **Redirect URLs** — add the same origin plus `/**`
 
 Skip this and confirmation and password-reset emails will point at

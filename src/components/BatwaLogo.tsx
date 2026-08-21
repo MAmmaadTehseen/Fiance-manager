@@ -1,11 +1,34 @@
 import { cn } from '@/lib/utils'
 
 /**
- * The Batwa mark: a solid disc, a dashed ring, and a B.
+ * The Batwa mark — M3, "The Coin": a B struck on a coin with a milled
+ * marigold edge.
  *
- * The dashed ring reads as stitching — a batwa (بٹوہ) is a stitched purse.
- * Colours come from tokens, so the mark follows light and dark automatically.
+ * The B is drawn from paths rather than <text>. A brand mark rendered as text
+ * flickers in a fallback face until the webfont loads, which is exactly the
+ * moment it is most visible. Paths also mean the SVG, the favicon and the PWA
+ * icons (scripts/make-icons.mjs, which has no font engine) are all the
+ * identical shape.
  */
+function BatwaB({ fill }: { fill: string }) {
+  return (
+    <>
+      <rect x="28" y="26" width="9" height="36" fill={fill} />
+      {/* Each bowl is a right half-ellipse with its counter knocked out. */}
+      <path
+        fillRule="evenodd"
+        fill={fill}
+        d="M37 26 A15 8.8 0 0 1 37 43.6 Z M37 31.2 A7.5 3.6 0 0 1 37 38.4 Z"
+      />
+      <path
+        fillRule="evenodd"
+        fill={fill}
+        d="M37 43.4 A17 9.6 0 0 1 37 62.6 Z M37 48.4 A9 4.6 0 0 1 37 57.6 Z"
+      />
+    </>
+  )
+}
+
 export function BatwaLogo({
   size = 32,
   className,
@@ -33,17 +56,7 @@ export function BatwaLogo({
         strokeDasharray="2 6"
         strokeLinecap="round"
       />
-      <text
-        x="44"
-        y="58"
-        textAnchor="middle"
-        fontFamily="'Bricolage Grotesque', sans-serif"
-        fontSize="40"
-        fontWeight="800"
-        fill="var(--brand-on)"
-      >
-        B
-      </text>
+      <BatwaB fill="var(--brand-on)" />
     </svg>
   )
 }
@@ -99,17 +112,7 @@ export function BatwaWatermark({
         strokeDasharray="2 6"
         strokeLinecap="round"
       />
-      <text
-        x="44"
-        y="58"
-        textAnchor="middle"
-        fontFamily="'Bricolage Grotesque', sans-serif"
-        fontSize="40"
-        fontWeight="800"
-        fill="currentColor"
-      >
-        B
-      </text>
+      <BatwaB fill="currentColor" />
     </svg>
   )
 }

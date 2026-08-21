@@ -1,6 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Finance Manager">
-  <rect width="64" height="64" rx="14" fill="#0f172a" />
-  <rect x="12" y="38" width="9" height="14" rx="4.5" fill="#a5b4fc" />
-  <rect x="27" y="28" width="9" height="24" rx="4.5" fill="#a5b4fc" />
-  <rect x="42" y="14" width="9" height="38" rx="4.5" fill="#ffffff" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 88" role="img" aria-label="Batwa">
+  <!-- Same geometry as src/components/BatwaLogo.tsx and scripts/make-icons.mjs.
+       Literal colours, not tokens: a favicon has no stylesheet. -->
+  <circle cx="44" cy="44" r="40" fill="#2a473c" />
+  <circle cx="44" cy="44" r="33" fill="none" stroke="#e6a83e" stroke-width="3"
+          stroke-dasharray="2 6" stroke-linecap="round" />
+  <rect x="28" y="26" width="9" height="36" fill="#f4f1e4" />
+  <path fill-rule="evenodd" fill="#f4f1e4"
+        d="M37 26 A15 8.8 0 0 1 37 43.6 Z M37 31.2 A7.5 3.6 0 0 1 37 38.4 Z" />
+  <path fill-rule="evenodd" fill="#f4f1e4"
+        d="M37 43.4 A17 9.6 0 0 1 37 62.6 Z M37 48.4 A9 4.6 0 0 1 37 57.6 Z" />
 </svg>

@@ -18,11 +18,14 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Finance Manager',
-        short_name: 'Finance',
-        description: 'Personal finance tracker with automatic bank SMS capture',
-        theme_color: '#0f172a',
-        background_color: '#0f172a',
+        name: 'Batwa — your money, kept',
+        short_name: 'Batwa',
+        description:
+          'Your bank texts, kept as a ledger. Automatic PKR expense tracking from bank SMS.',
+        // The live meta tag is swapped per theme in theme.tsx, but the manifest
+        // value is read once at install time — so it tracks the light ground.
+        theme_color: '#f5f2e9',
+        background_color: '#f5f2e9',
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
