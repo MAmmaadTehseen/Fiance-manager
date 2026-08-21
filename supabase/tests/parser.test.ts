@@ -170,6 +170,23 @@ for (const [label, sender, body] of [
   ['OTP', 'HBL', 'Your OTP for login is 123456. Do not share it with anyone.'],
   ['OTP with amount', 'Meezan', 'OTP 987654 to authorise PKR 5,000.00 transfer. Valid 5 min.'],
   ['promo', 'UBL', 'Congratulations! Get 20% discount on your next purchase.'],
+  // A decline is the dangerous one: it names a merchant and, at some banks,
+  // an amount. Booking it would invent money the user never spent.
+  [
+    'declined transaction',
+    'HBL',
+    'Dear Customer, Your transaction was not completed due to insufficient limit. You may apply for limit enhancement. Call 021 111 06 06 06',
+  ],
+  [
+    'declined with an amount',
+    'UBL',
+    'Your transaction of PKR 5,000.00 at METRO was declined due to insufficient balance.',
+  ],
+  [
+    'telco promo',
+    'Ufone',
+    'FREE BONUS Sirf Ap K lye, Rs 100 ya us se ziada k recharge per. Abhi recharge karen aur payen 2GB WhatsApp aur Facebook 3 din k liye',
+  ],
 ] as const) {
   const r = parseSms(sender, body, templates)
   if (r.matched && r.kind === 'ignore') ok(`${label} is ignored`)
@@ -206,6 +223,16 @@ const REAL: Array<{
     last4: null,
     counterparty: '0123',
     fee: 1.55,
+  },
+  {
+    // Faysal card spend. The verb phrase ("Debit Card purchase") FOLLOWS the
+    // amount, which the original card template could not read at all — so a
+    // genuine transaction was being dropped.
+    label: 'Faysal card purchase (amount before the verb phrase)',
+    body: 'PKR 330.87 Debit Card purchase at Name-Cheap.Com  * from FBL A/C *5555 on 21/AUG/2026 at 01:38:55 PM',
+    kind: 'purchase',
+    amount: 330.87,
+    last4: '5555',
   },
   {
     label: 'UBL IBFT in ("in your UBL A/C")',

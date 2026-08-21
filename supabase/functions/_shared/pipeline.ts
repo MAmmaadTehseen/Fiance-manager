@@ -82,8 +82,13 @@ async function resolveAccount(
   sender: string,
 ): Promise<OwnAccount | null> {
   // 1. The message named the account outright.
-  const byLast4 = await findAccountByLast4(db, userId, last4)
-  if (byLast4) return byLast4
+  if (last4) {
+    // And if it named one we do not recognise, STOP. The fallbacks below are
+    // guesses, and a guess here posts real money to the wrong account without
+    // saying so. An unknown card is a question, not a default — answering it
+    // once in the inbox teaches it permanently.
+    return await findAccountByLast4(db, userId, last4)
+  }
 
   // 2. Outgoing alerts name only the recipient, so fall back to which bank
   //    sent the message. Learned once via the inbox, then automatic.
