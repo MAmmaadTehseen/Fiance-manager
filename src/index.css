@@ -185,3 +185,41 @@
     outline-offset: 2px;
   }
 }
+
+/* ---------------------------------------------------------------
+   Batwa marketing palette.
+
+   Deliberately scoped to `.batwa` rather than `:root`: the landing
+   page is a warm, light-only brand, while the app itself is cool-toned
+   and follows the system light/dark preference. Scoping keeps one from
+   bleeding into the other. Names are prefixed for the same reason —
+   `--card` already means something else in the app.
+   --------------------------------------------------------------- */
+
+.batwa {
+  --b-font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --b-font-body: 'Schibsted Grotesk', ui-sans-serif, system-ui, sans-serif;
+
+  --b-bg: oklch(0.962 0.012 95);
+  --b-card: oklch(0.995 0.005 95);
+  --b-ink: oklch(0.22 0.035 160);
+  --b-sub: oklch(0.47 0.025 160);
+  --b-line: oklch(0.895 0.014 110);
+  --b-soft: oklch(0.93 0.014 100);
+
+  --b-brand: oklch(0.32 0.06 160);
+  --b-brand-deep: oklch(0.24 0.045 160);
+  --b-brand-on: oklch(0.965 0.02 90);
+
+  --b-gold: oklch(0.78 0.15 75);
+  --b-gold-ink: oklch(0.5 0.11 70);
+  --b-gold-soft: oklch(0.78 0.15 75 / 0.16);
+
+  --b-pos: oklch(0.5 0.12 155);
+
+  --b-shadow:
+    0 1px 2px oklch(0.3 0.04 160 / 0.06),
+    0 12px 32px -14px oklch(0.3 0.04 160 / 0.18);
+
+  color-scheme: light;
+}

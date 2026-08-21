@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from '@/lib/auth'
 import { AppLayout } from '@/app/AppLayout'
+import { LandingPage } from '@/features/marketing/LandingPage'
 import { SignInPage } from '@/features/auth/SignInPage'
 import { SignUpPage } from '@/features/auth/SignUpPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
@@ -29,9 +30,13 @@ export function App() {
   if (!user) {
     return (
       <Routes>
+        {/* Signed out, `/` is the public homepage. Once there's a session the
+            same path is the dashboard, so the app never shows marketing to
+            someone who has already signed in. */}
+        <Route path="/" element={<LandingPage />} />
         <Route path="/sign-in" element={<SignInPage />} />
         <Route path="/sign-up" element={<SignUpPage />} />
-        <Route path="*" element={<Navigate to="/sign-in" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     )
   }
