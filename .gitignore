@@ -37,3 +37,6 @@ dev.db
 *.sln
 *.sw?
 
+
+# Scratch: decoded design files and render checks, all reproducible.
+.design/
