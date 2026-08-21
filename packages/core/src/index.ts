@@ -9,6 +9,7 @@
 export * from './client'
 export * from './money'
 export * from './tokens'
+export * from './version'
 export * from './types/db'
 export type { Database, Json } from './types/database.types'
 

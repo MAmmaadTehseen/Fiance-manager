@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   AppState,
+  Linking,
   PermissionsAndroid,
   Platform,
   Pressable,
@@ -21,6 +22,7 @@ import {
 
 import { BatwaCapture, type CaptureStatus } from '../modules/batwa-capture'
 import { palette, resolveScheme, type Colors } from '../lib/theme'
+import { useAppUpdate, useOtaUpdate } from '../lib/appUpdate'
 import { useSession } from '../lib/session'
 
 function Card({ colors, children }: { colors: Colors; children: React.ReactNode }) {
@@ -92,6 +94,9 @@ function Button({
 export default function Capture() {
   const colors = palette[resolveScheme(useColorScheme())]
   const { session } = useSession()
+
+  const { currentVersion, nativeUpdate } = useAppUpdate()
+  const ota = useOtaUpdate()
 
   const [status, setStatus] = useState<CaptureStatus | null>(null)
   const [smsGranted, setSmsGranted] = useState(false)
@@ -189,6 +194,50 @@ export default function Capture() {
           {session?.user?.email ?? ''}
         </Text>
       </View>
+
+      {ota.ready ? (
+        <View
+          style={{
+            backgroundColor: colors.brandSoft,
+            borderColor: colors.brand,
+            borderWidth: 1,
+            borderRadius: 14,
+            padding: 14,
+            gap: 10,
+          }}
+        >
+          <Text style={{ fontSize: 14, color: colors.ink }}>
+            An update is ready. Restart to apply it.
+          </Text>
+          <Button colors={colors} label="Restart now" onPress={() => void ota.applyNow()} />
+        </View>
+      ) : null}
+
+      {nativeUpdate ? (
+        <View
+          style={{
+            backgroundColor: colors.goldSoft,
+            borderColor: colors.gold,
+            borderWidth: 1,
+            borderRadius: 14,
+            padding: 14,
+            gap: 8,
+          }}
+        >
+          <Text style={{ fontSize: 15, fontWeight: '700', color: colors.ink }}>
+            New version available ({nativeUpdate.version})
+          </Text>
+          <Text style={{ fontSize: 14, lineHeight: 20, color: colors.sub }}>
+            {nativeUpdate.notes ??
+              'This one changes the app itself, so it needs installing rather than arriving on its own.'}
+          </Text>
+          <Button
+            colors={colors}
+            label="Get the update"
+            onPress={() => void Linking.openURL(nativeUpdate.url)}
+          />
+        </View>
+      ) : null}
 
       {error ? (
         <Text
@@ -347,6 +396,10 @@ export default function Capture() {
       ) : null}
 
       <Button colors={colors} tone="quiet" label="Sign out" onPress={signOut} />
+
+      <Text style={{ fontSize: 12, color: colors.sub, textAlign: 'center' }}>
+        Batwa {currentVersion}
+      </Text>
     </ScrollView>
   )
 }

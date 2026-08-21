@@ -1,0 +1,8 @@
+{
+  "_comment": "Read by the Android app to tell whether its NATIVE build is stale. Over-the-air JS updates are handled by expo-updates and need nothing here — bump `version` only when a new APK is genuinely required (a new permission, a native module change, or an Expo SDK upgrade). Served from the web app so it costs no backend and updates on every deploy.",
+  "android": {
+    "version": "0.1.0",
+    "url": "https://batwa.online/download",
+    "notes": "First build: automatic bank SMS capture."
+  }
+}
