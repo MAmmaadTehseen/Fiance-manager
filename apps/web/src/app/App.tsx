@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from '@/lib/auth'
 import { AppLayout } from '@/app/AppLayout'
 import { LandingPage } from '@/features/marketing/LandingPage'
+import { DownloadPage } from '@/features/marketing/DownloadPage'
 import { SignInPage } from '@/features/auth/SignInPage'
 import { SignUpPage } from '@/features/auth/SignUpPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
@@ -34,6 +35,7 @@ export function App() {
             same path is the dashboard, so the app never shows marketing to
             someone who has already signed in. */}
         <Route path="/" element={<LandingPage />} />
+        <Route path="/download" element={<DownloadPage />} />
         <Route path="/sign-in" element={<SignInPage />} />
         <Route path="/sign-up" element={<SignUpPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -50,6 +52,7 @@ export function App() {
         <Route path="/accounts" element={<AccountsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
+      <Route path="/download" element={<DownloadPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
