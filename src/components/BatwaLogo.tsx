@@ -1,7 +1,10 @@
+import { cn } from '@/lib/utils'
+
 /**
  * The Batwa mark: a solid disc, a dashed ring, and a B.
  *
  * The dashed ring reads as stitching — a batwa (بٹوہ) is a stitched purse.
+ * Colours come from tokens, so the mark follows light and dark automatically.
  */
 export function BatwaLogo({
   size = 32,
@@ -15,17 +18,17 @@ export function BatwaLogo({
       width={size}
       height={size}
       viewBox="0 0 88 88"
-      className={className}
+      className={cn('shrink-0', className)}
       role="img"
       aria-label="Batwa"
     >
-      <circle cx="44" cy="44" r="40" fill="var(--b-brand)" />
+      <circle cx="44" cy="44" r="40" fill="var(--brand)" />
       <circle
         cx="44"
         cy="44"
         r="33"
         fill="none"
-        stroke="var(--b-gold)"
+        stroke="var(--gold)"
         strokeWidth="3"
         strokeDasharray="2 6"
         strokeLinecap="round"
@@ -37,7 +40,7 @@ export function BatwaLogo({
         fontFamily="'Bricolage Grotesque', sans-serif"
         fontSize="40"
         fontWeight="800"
-        fill="var(--b-brand-on)"
+        fill="var(--brand-on)"
       >
         B
       </text>
@@ -45,9 +48,23 @@ export function BatwaLogo({
   )
 }
 
+/** "batwa." — the dot is always gold. */
+export function BatwaWordmark({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        'font-display font-bold tracking-[-0.02em] text-ink',
+        className,
+      )}
+    >
+      batwa<span className="text-gold">.</span>
+    </span>
+  )
+}
+
 /**
- * Outline-only version used as an oversized watermark inside the balance card,
- * where it inherits the surrounding text colour instead of the brand palette.
+ * Outline-only variant used as an oversized watermark on brand-filled cards,
+ * where it inherits the surrounding text colour rather than the palette.
  */
 export function BatwaWatermark({
   size = 180,

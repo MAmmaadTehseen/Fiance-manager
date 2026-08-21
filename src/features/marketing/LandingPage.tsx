@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { BatwaLogo, BatwaWatermark } from './BatwaLogo'
+import { BatwaLogo, BatwaWatermark, BatwaWordmark } from '@/components/BatwaLogo'
 
 /**
  * The public homepage.
@@ -82,7 +82,7 @@ const FEATURES = [
 
 function FeatureIcon({ children }: { children: React.ReactNode }) {
   return (
-    <span className="flex size-[42px] items-center justify-center rounded-[13px] bg-[var(--b-gold-soft)] text-[var(--b-gold-ink)]">
+    <span className="flex size-[42px] items-center justify-center rounded-[13px] bg-[var(--gold-soft)] text-[var(--gold-ink)]">
       <svg
         width="19"
         height="19"
@@ -102,29 +102,27 @@ function FeatureIcon({ children }: { children: React.ReactNode }) {
 
 const SHELL = 'mx-auto w-full max-w-[1160px] px-[clamp(16px,4vw,32px)]'
 const PRIMARY_BTN =
-  'rounded-[14px] bg-[var(--b-brand)] px-6 py-[14px] text-[15px] font-bold text-[var(--b-brand-on)] no-underline transition hover:brightness-110'
+  'rounded-[14px] bg-[var(--brand)] px-6 py-[14px] text-[15px] font-bold text-[var(--brand-on)] no-underline transition hover:brightness-110'
 
 export function LandingPage() {
   return (
-    <div className="batwa min-h-dvh bg-[var(--b-bg)] font-[family-name:var(--b-font-body)] text-[var(--b-ink)]">
+    <div data-theme="light" className="min-h-dvh bg-[var(--bg)] font-[family-name:var(--font-sans)] text-[var(--ink)]">
       {/* ---------------------------------------------------------- header */}
-      <header className="sticky top-0 z-20 border-b border-[var(--b-line)] bg-[oklch(0.962_0.012_95/0.88)] backdrop-blur-[10px]">
+      <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[oklch(0.962_0.012_95/0.88)] backdrop-blur-[10px]">
         <div className={`${SHELL} flex items-center gap-3 py-[14px]`}>
           <BatwaLogo size={32} />
-          <span className="font-[family-name:var(--b-font-display)] text-xl font-bold tracking-[-0.02em]">
-            batwa<span className="text-[var(--b-gold)]">.</span>
-          </span>
+          <BatwaWordmark className="text-xl" />
 
           <nav className="ml-auto flex items-center gap-[clamp(10px,2vw,22px)]">
             <a
               href="#how"
-              className="text-sm font-semibold text-[var(--b-sub)] no-underline transition hover:text-[var(--b-ink)]"
+              className="text-sm font-semibold text-[var(--sub)] no-underline transition hover:text-[var(--ink)]"
             >
               How it works
             </a>
             <Link
               to="/sign-in"
-              className="rounded-[11px] bg-[var(--b-brand)] px-4 py-[9px] text-sm font-bold text-[var(--b-brand-on)] no-underline transition hover:brightness-110"
+              className="rounded-[11px] bg-[var(--brand)] px-4 py-[9px] text-sm font-bold text-[var(--brand-on)] no-underline transition hover:brightness-110"
             >
               Open app
             </Link>
@@ -140,17 +138,17 @@ export function LandingPage() {
         }}
       >
         <div className="flex flex-col gap-5">
-          <span className="self-start rounded-full bg-[var(--b-gold-soft)] px-3 py-1.5 text-[12.5px] font-bold tracking-[0.04em] text-[var(--b-gold-ink)]">
+          <span className="self-start rounded-full bg-[var(--gold-soft)] px-3 py-1.5 text-[12.5px] font-bold tracking-[0.04em] text-[var(--gold-ink)]">
             PKR-FIRST · MADE FOR PAKISTAN
           </span>
 
-          <h1 className="m-0 font-[family-name:var(--b-font-display)] text-[clamp(34px,6vw,60px)] font-extrabold leading-[1.05] tracking-[-0.03em] text-pretty">
+          <h1 className="m-0 font-[family-name:var(--font-display)] text-[clamp(34px,6vw,60px)] font-extrabold leading-[1.05] tracking-[-0.03em] text-pretty">
             Your bank texts.
             <br />
             Batwa keeps the ledger.
           </h1>
 
-          <p className="m-0 max-w-[480px] text-[clamp(15px,2vw,18px)] leading-[1.6] text-[var(--b-sub)] text-pretty">
+          <p className="m-0 max-w-[480px] text-[clamp(15px,2vw,18px)] leading-[1.6] text-[var(--sub)] text-pretty">
             Every Meezan, JazzCash and Easypaisa SMS your phone gets becomes a
             clean, categorised transaction — automatically. You just confirm.
           </p>
@@ -161,20 +159,20 @@ export function LandingPage() {
             </Link>
             <a
               href="#how"
-              className="rounded-[14px] border border-[var(--b-line)] bg-[var(--b-card)] px-6 py-[14px] text-[15px] font-bold text-[var(--b-ink)] no-underline transition hover:bg-[var(--b-soft)]"
+              className="rounded-[14px] border border-[var(--line)] bg-[var(--card-bg)] px-6 py-[14px] text-[15px] font-bold text-[var(--ink)] no-underline transition hover:bg-[var(--soft)]"
             >
               See how it works
             </a>
           </div>
 
-          <p className="mb-0 mt-1 text-[13px] text-[var(--b-sub)]">
+          <p className="mb-0 mt-1 text-[13px] text-[var(--sub)]">
             Free while in beta · SMS never leaves your phone unencrypted
           </p>
         </div>
 
         {/* --- preview cards --- */}
         <div className="flex min-w-0 flex-col gap-[14px]">
-          <div className="relative overflow-hidden rounded-[26px] bg-[var(--b-brand)] p-[clamp(22px,4vw,30px)] text-[var(--b-brand-on)] shadow-[var(--b-shadow)]">
+          <div className="relative overflow-hidden rounded-[26px] bg-[var(--brand)] p-[clamp(22px,4vw,30px)] text-[var(--brand-on)] shadow-[var(--shadow)]">
             <BatwaWatermark
               size={180}
               className="absolute -bottom-[50px] -right-[40px] opacity-[0.12]"
@@ -182,38 +180,38 @@ export function LandingPage() {
             <p className="m-0 text-[13px] font-semibold opacity-75">
               Total balance
             </p>
-            <p className="mb-0 mt-1.5 font-[family-name:var(--b-font-display)] text-[clamp(34px,5vw,44px)] font-bold tabular-nums tracking-[-0.02em]">
+            <p className="mb-0 mt-1.5 font-[family-name:var(--font-display)] text-[clamp(34px,5vw,44px)] font-bold tabular-nums tracking-[-0.02em]">
               Rs 412,350
             </p>
             <div className="mt-[18px] flex flex-wrap gap-7">
               <span className="text-sm font-bold text-[oklch(0.85_0.1_155)]">
                 +Rs 285,000 in
               </span>
-              <span className="text-sm font-bold text-[var(--b-gold)]">
+              <span className="text-sm font-bold text-[var(--gold)]">
                 −Rs 96,420 out
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 rounded-[20px] border border-[var(--b-line)] bg-[var(--b-card)] px-[18px] py-4 shadow-[var(--b-shadow)]">
-            <span className="flex size-[38px] shrink-0 items-center justify-center rounded-xl bg-[var(--b-gold-soft)] font-bold text-[var(--b-gold-ink)]">
+          <div className="flex items-center gap-3 rounded-[20px] border border-[var(--line)] bg-[var(--card-bg)] px-[18px] py-4 shadow-[var(--shadow)]">
+            <span className="flex size-[38px] shrink-0 items-center justify-center rounded-xl bg-[var(--gold-soft)] font-bold text-[var(--gold-ink)]">
               F
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold">
                 Foodpanda · −Rs 1,640
               </span>
-              <span className="block truncate text-[12.5px] text-[var(--b-sub)]">
+              <span className="block truncate text-[12.5px] text-[var(--sub)]">
                 Parsed from Meezan SMS · Food &amp; dining
               </span>
             </span>
-            <span className="shrink-0 rounded-full bg-[var(--b-brand)] px-[13px] py-[7px] text-xs font-bold text-[var(--b-brand-on)]">
+            <span className="shrink-0 rounded-full bg-[var(--brand)] px-[13px] py-[7px] text-xs font-bold text-[var(--brand-on)]">
               Confirm
             </span>
           </div>
 
-          <div className="mr-[clamp(0px,6vw,56px)] flex items-center gap-3 rounded-[20px] border border-[var(--b-line)] bg-[var(--b-card)] px-[18px] py-4 shadow-[var(--b-shadow)]">
-            <span className="flex size-[38px] shrink-0 items-center justify-center rounded-xl bg-[oklch(0.5_0.12_155/0.12)] text-[var(--b-pos)]">
+          <div className="mr-[clamp(0px,6vw,56px)] flex items-center gap-3 rounded-[20px] border border-[var(--line)] bg-[var(--card-bg)] px-[18px] py-4 shadow-[var(--shadow)]">
+            <span className="flex size-[38px] shrink-0 items-center justify-center rounded-xl bg-[oklch(0.5_0.12_155/0.12)] text-[var(--pos)]">
               <svg
                 width="16"
                 height="16"
@@ -232,7 +230,7 @@ export function LandingPage() {
               <span className="block text-sm font-semibold">
                 JazzCash +Rs 5,000 added
               </span>
-              <span className="block text-[12.5px] text-[var(--b-sub)]">
+              <span className="block text-[12.5px] text-[var(--sub)]">
                 No typing. No spreadsheets.
               </span>
             </span>
@@ -243,13 +241,13 @@ export function LandingPage() {
       {/* --------------------------------------------------- how it works */}
       <section
         id="how"
-        className="bg-[var(--b-brand-deep)] text-[var(--b-brand-on)]"
+        className="bg-[var(--brand-deep)] text-[var(--brand-on)]"
       >
         <div
           className={`${SHELL} flex flex-col gap-[clamp(28px,4vw,44px)] py-[clamp(48px,7vw,88px)]`}
         >
           <div className="max-w-[560px]">
-            <h2 className="m-0 font-[family-name:var(--b-font-display)] text-[clamp(26px,4vw,40px)] font-bold tracking-[-0.02em]">
+            <h2 className="m-0 font-[family-name:var(--font-display)] text-[clamp(26px,4vw,40px)] font-bold tracking-[-0.02em]">
               Three steps, then it runs itself
             </h2>
             <p className="mb-0 mt-2.5 text-[15.5px] leading-[1.6] opacity-75">
@@ -270,7 +268,7 @@ export function LandingPage() {
                 key={s.n}
                 className="flex flex-col gap-3 rounded-[22px] border border-[oklch(1_0_0/0.12)] bg-[oklch(1_0_0/0.06)] p-[26px]"
               >
-                <span className="font-[family-name:var(--b-font-display)] text-[15px] font-extrabold text-[var(--b-gold)]">
+                <span className="font-[family-name:var(--font-display)] text-[15px] font-extrabold text-[var(--gold)]">
                   {s.n}
                 </span>
                 <h3 className="m-0 text-lg font-bold">{s.title}</h3>
@@ -288,7 +286,7 @@ export function LandingPage() {
         className={`${SHELL} flex flex-col gap-[clamp(28px,4vw,44px)] py-[clamp(48px,7vw,88px)]`}
       >
         <div className="max-w-[560px]">
-          <h2 className="m-0 font-[family-name:var(--b-font-display)] text-[clamp(26px,4vw,40px)] font-bold tracking-[-0.02em]">
+          <h2 className="m-0 font-[family-name:var(--font-display)] text-[clamp(26px,4vw,40px)] font-bold tracking-[-0.02em]">
             Everything a batwa should hold
           </h2>
         </div>
@@ -302,11 +300,11 @@ export function LandingPage() {
           {FEATURES.map((f) => (
             <div
               key={f.title}
-              className="flex flex-col gap-2.5 rounded-[22px] border border-[var(--b-line)] bg-[var(--b-card)] p-6 shadow-[var(--b-shadow)]"
+              className="flex flex-col gap-2.5 rounded-[22px] border border-[var(--line)] bg-[var(--card-bg)] p-6 shadow-[var(--shadow)]"
             >
               <FeatureIcon>{f.icon}</FeatureIcon>
               <h3 className="m-0 text-[16.5px] font-bold">{f.title}</h3>
-              <p className="m-0 text-sm leading-[1.6] text-[var(--b-sub)]">
+              <p className="m-0 text-sm leading-[1.6] text-[var(--sub)]">
                 {f.body}
               </p>
             </div>
@@ -316,14 +314,14 @@ export function LandingPage() {
 
       {/* ------------------------------------------------------------- cta */}
       <section className={`${SHELL} pb-[clamp(48px,7vw,88px)]`}>
-        <div className="flex flex-col items-center gap-[18px] rounded-[28px] bg-[var(--b-gold)] p-[clamp(32px,6vw,56px)] text-center">
+        <div className="flex flex-col items-center gap-[18px] rounded-[28px] bg-[var(--gold)] p-[clamp(32px,6vw,56px)] text-center">
           <BatwaLogo size={52} />
-          <h2 className="m-0 max-w-[560px] font-[family-name:var(--b-font-display)] text-[clamp(26px,4.5vw,42px)] font-extrabold tracking-[-0.02em] text-[oklch(0.25_0.05_75)] text-pretty">
+          <h2 className="m-0 max-w-[560px] font-[family-name:var(--font-display)] text-[clamp(26px,4.5vw,42px)] font-extrabold tracking-[-0.02em] text-[oklch(0.25_0.05_75)] text-pretty">
             Stop guessing where the month went.
           </h2>
           <Link
             to="/sign-up"
-            className="rounded-[14px] bg-[var(--b-brand)] px-7 py-[15px] text-[15.5px] font-bold text-[var(--b-brand-on)] no-underline transition hover:brightness-110"
+            className="rounded-[14px] bg-[var(--brand)] px-7 py-[15px] text-[15.5px] font-bold text-[var(--brand-on)] no-underline transition hover:brightness-110"
           >
             Open Batwa free
           </Link>
@@ -331,13 +329,13 @@ export function LandingPage() {
       </section>
 
       {/* ---------------------------------------------------------- footer */}
-      <footer className="border-t border-[var(--b-line)]">
+      <footer className="border-t border-[var(--line)]">
         <div className={`${SHELL} flex flex-wrap items-center gap-3 py-6`}>
           <BatwaLogo size={24} />
-          <span className="text-[13.5px] text-[var(--b-sub)]">
+          <span className="text-[13.5px] text-[var(--sub)]">
             batwa · بٹوہ — your money, kept.
           </span>
-          <span className="ml-auto text-[13px] text-[var(--b-sub)]">
+          <span className="ml-auto text-[13px] text-[var(--sub)]">
             © 2026 Batwa
           </span>
         </div>

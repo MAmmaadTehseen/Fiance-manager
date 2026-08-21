@@ -1,131 +1,132 @@
 @import 'tailwindcss';
 
-/* ---------------------------------------------------------------
-   Design tokens. Light is the base; dark overrides only the values.
-   Follows the shadcn/ui token contract so its primitives drop in.
-   --------------------------------------------------------------- */
+/* ===========================================================================
+   Batwa design tokens.
+
+   Two layers, deliberately:
+
+   1. The BRAND palette (--bg, --ink, --brand, --gold …) is the design's own
+      vocabulary and the only place colour values are written down.
+   2. The SEMANTIC names (--background, --primary, --border …) are mapped onto
+      that palette. Every existing component already speaks this vocabulary, so
+      the rebrand reaches them without any of them being edited.
+
+   Light is the base. Dark overrides only the palette — the mapping below is
+   written once and holds for both, which is what stops the two themes drifting.
+
+   `[data-theme]` is always set explicitly, by an inline script in index.html
+   before first paint, so there is no flash of the wrong theme and no
+   `prefers-color-scheme` branch to keep in sync.
+   =========================================================================== */
 
 @theme {
   --font-sans:
-    'Inter var', 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+    'Schibsted Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
     sans-serif;
+  --font-display:
+    'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
 
-  /* Tabular figures matter a lot in a ledger. */
-  --font-numeric: 'Inter var', ui-sans-serif, system-ui, sans-serif;
-
-  --radius-card: 0.875rem;
+  --radius-card: 1.5rem;
 }
 
 :root {
-  --background: oklch(0.99 0.002 250);
-  --foreground: oklch(0.21 0.02 260);
+  /* ---- brand palette · light ---- */
+  --bg: oklch(0.962 0.012 95);
+  --card-bg: oklch(0.995 0.005 95);
+  --ink: oklch(0.22 0.035 160);
+  --sub: oklch(0.47 0.025 160);
+  --line: oklch(0.895 0.014 110);
+  --soft: oklch(0.93 0.014 100);
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.02 260);
+  --brand: oklch(0.32 0.06 160);
+  --brand-deep: oklch(0.24 0.045 160);
+  --brand-on: oklch(0.965 0.02 90);
+  --brand-soft: oklch(0.32 0.06 160 / 0.09);
 
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.02 260);
+  --gold: oklch(0.78 0.15 75);
+  --gold-ink: oklch(0.5 0.11 70);
+  --gold-soft: oklch(0.78 0.15 75 / 0.16);
+  /* Text that sits ON the gold fill — a badge count, the CTA heading. */
+  --gold-on: oklch(0.28 0.06 75);
 
-  --primary: oklch(0.55 0.16 258);
-  --primary-foreground: oklch(0.99 0.002 250);
+  --pos: oklch(0.5 0.12 155);
+  --neg: oklch(0.53 0.15 25);
 
-  --secondary: oklch(0.96 0.006 255);
-  --secondary-foreground: oklch(0.28 0.02 260);
+  --shadow:
+    0 1px 2px oklch(0.3 0.04 160 / 0.06),
+    0 8px 24px -12px oklch(0.3 0.04 160 / 0.14);
 
-  --muted: oklch(0.96 0.006 255);
-  --muted-foreground: oklch(0.53 0.015 258);
-
-  --accent: oklch(0.95 0.012 255);
-  --accent-foreground: oklch(0.28 0.02 260);
-
-  --destructive: oklch(0.58 0.19 27);
-  --destructive-foreground: oklch(0.99 0.002 250);
-
-  --border: oklch(0.92 0.006 255);
-  --input: oklch(0.92 0.006 255);
-  --ring: oklch(0.55 0.16 258);
-
-  /* Money semantics — used for amounts, never for decoration. */
-  --money-in: oklch(0.55 0.14 155);
-  --money-out: oklch(0.55 0.17 25);
-  --money-neutral: oklch(0.53 0.015 258);
-  --warning: oklch(0.68 0.15 75);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --background: oklch(0.17 0.015 260);
-    --foreground: oklch(0.95 0.005 255);
-
-    --card: oklch(0.21 0.018 260);
-    --card-foreground: oklch(0.95 0.005 255);
-
-    --popover: oklch(0.21 0.018 260);
-    --popover-foreground: oklch(0.95 0.005 255);
-
-    --primary: oklch(0.7 0.14 258);
-    --primary-foreground: oklch(0.17 0.015 260);
-
-    --secondary: oklch(0.27 0.02 260);
-    --secondary-foreground: oklch(0.95 0.005 255);
-
-    --muted: oklch(0.27 0.02 260);
-    --muted-foreground: oklch(0.68 0.015 258);
-
-    --accent: oklch(0.3 0.022 260);
-    --accent-foreground: oklch(0.95 0.005 255);
-
-    --destructive: oklch(0.62 0.19 27);
-    --destructive-foreground: oklch(0.98 0.005 255);
-
-    --border: oklch(0.3 0.02 260);
-    --input: oklch(0.32 0.02 260);
-    --ring: oklch(0.7 0.14 258);
-
-    --money-in: oklch(0.75 0.16 158);
-    --money-out: oklch(0.7 0.17 25);
-    --money-neutral: oklch(0.68 0.015 258);
-    --warning: oklch(0.78 0.15 78);
-  }
+  color-scheme: light;
 }
 
 :root[data-theme='dark'] {
-  --background: oklch(0.17 0.015 260);
-  --foreground: oklch(0.95 0.005 255);
+  --bg: oklch(0.155 0.02 160);
+  --card-bg: oklch(0.205 0.025 160);
+  --ink: oklch(0.95 0.015 95);
+  --sub: oklch(0.67 0.02 160);
+  --line: oklch(0.29 0.025 160);
+  --soft: oklch(0.25 0.025 160);
 
-  --card: oklch(0.21 0.018 260);
-  --card-foreground: oklch(0.95 0.005 255);
+  --brand: oklch(0.36 0.065 160);
+  --brand-deep: oklch(0.2 0.03 160);
+  --brand-on: oklch(0.96 0.02 90);
+  --brand-soft: oklch(0.75 0.1 160 / 0.14);
 
-  --popover: oklch(0.21 0.018 260);
-  --popover-foreground: oklch(0.95 0.005 255);
+  --gold: oklch(0.8 0.15 78);
+  --gold-ink: oklch(0.8 0.15 78);
+  --gold-soft: oklch(0.8 0.15 78 / 0.16);
+  --gold-on: oklch(0.28 0.06 75);
 
-  --primary: oklch(0.7 0.14 258);
-  --primary-foreground: oklch(0.17 0.015 260);
+  --pos: oklch(0.74 0.12 155);
+  --neg: oklch(0.7 0.13 25);
 
-  --secondary: oklch(0.27 0.02 260);
-  --secondary-foreground: oklch(0.95 0.005 255);
+  --shadow:
+    0 1px 2px oklch(0 0 0 / 0.2),
+    0 8px 24px -12px oklch(0 0 0 / 0.4);
 
-  --muted: oklch(0.27 0.02 260);
-  --muted-foreground: oklch(0.68 0.015 258);
-
-  --accent: oklch(0.3 0.022 260);
-  --accent-foreground: oklch(0.95 0.005 255);
-
-  --destructive: oklch(0.62 0.19 27);
-  --destructive-foreground: oklch(0.98 0.005 255);
-
-  --border: oklch(0.3 0.02 260);
-  --input: oklch(0.32 0.02 260);
-  --ring: oklch(0.7 0.14 258);
-
-  --money-in: oklch(0.75 0.16 158);
-  --money-out: oklch(0.7 0.17 25);
-  --money-neutral: oklch(0.68 0.015 258);
-  --warning: oklch(0.78 0.15 78);
+  color-scheme: dark;
 }
 
-/* Expose the tokens to Tailwind's utility generator. */
+/* ---- semantic mapping · written once, true in both themes ---- */
+:root,
+:root[data-theme='dark'] {
+  --background: var(--bg);
+  --foreground: var(--ink);
+
+  --card: var(--card-bg);
+  --card-foreground: var(--ink);
+
+  --popover: var(--card-bg);
+  --popover-foreground: var(--ink);
+
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-on);
+
+  --secondary: var(--soft);
+  --secondary-foreground: var(--ink);
+
+  --muted: var(--soft);
+  --muted-foreground: var(--sub);
+
+  --accent: var(--soft);
+  --accent-foreground: var(--ink);
+
+  --destructive: var(--neg);
+  --destructive-foreground: oklch(0.98 0.005 95);
+
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--brand);
+
+  /* Money semantics — used for amounts, never for decoration. */
+  --money-in: var(--pos);
+  --money-out: var(--neg);
+  --money-neutral: var(--sub);
+  --warning: var(--gold);
+}
+
+/* Expose both layers to Tailwind's utility generator. */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -150,6 +151,23 @@
   --color-money-out: var(--money-out);
   --color-money-neutral: var(--money-neutral);
   --color-warning: var(--warning);
+
+  --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-on: var(--brand-on);
+  --color-brand-soft: var(--brand-soft);
+  --color-gold: var(--gold);
+  --color-gold-ink: var(--gold-ink);
+  --color-gold-soft: var(--gold-soft);
+  --color-gold-on: var(--gold-on);
+  --color-ink: var(--ink);
+  --color-sub: var(--sub);
+  --color-line: var(--line);
+  --color-soft: var(--soft);
+  --color-pos: var(--pos);
+  --color-neg: var(--neg);
+
+  --shadow-card: var(--shadow);
 }
 
 @layer base {
@@ -164,14 +182,12 @@
   }
 
   body {
+    margin: 0;
     background-color: var(--background);
     color: var(--foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    /* Respect the notch / gesture bar when installed. */
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
   }
 
   /* Amounts must align digit-for-digit down a column. */
@@ -184,42 +200,4 @@
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
-}
-
-/* ---------------------------------------------------------------
-   Batwa marketing palette.
-
-   Deliberately scoped to `.batwa` rather than `:root`: the landing
-   page is a warm, light-only brand, while the app itself is cool-toned
-   and follows the system light/dark preference. Scoping keeps one from
-   bleeding into the other. Names are prefixed for the same reason —
-   `--card` already means something else in the app.
-   --------------------------------------------------------------- */
-
-.batwa {
-  --b-font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
-  --b-font-body: 'Schibsted Grotesk', ui-sans-serif, system-ui, sans-serif;
-
-  --b-bg: oklch(0.962 0.012 95);
-  --b-card: oklch(0.995 0.005 95);
-  --b-ink: oklch(0.22 0.035 160);
-  --b-sub: oklch(0.47 0.025 160);
-  --b-line: oklch(0.895 0.014 110);
-  --b-soft: oklch(0.93 0.014 100);
-
-  --b-brand: oklch(0.32 0.06 160);
-  --b-brand-deep: oklch(0.24 0.045 160);
-  --b-brand-on: oklch(0.965 0.02 90);
-
-  --b-gold: oklch(0.78 0.15 75);
-  --b-gold-ink: oklch(0.5 0.11 70);
-  --b-gold-soft: oklch(0.78 0.15 75 / 0.16);
-
-  --b-pos: oklch(0.5 0.12 155);
-
-  --b-shadow:
-    0 1px 2px oklch(0.3 0.04 160 / 0.06),
-    0 12px 32px -14px oklch(0.3 0.04 160 / 0.18);
-
-  color-scheme: light;
 }

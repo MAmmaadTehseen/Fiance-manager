@@ -9,21 +9,55 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
-    <meta name="description" content="Personal finance tracker with automatic bank SMS capture." />
-    <meta name="theme-color" content="#0f172a" />
+    <meta
+      name="description"
+      content="Batwa — your bank texts, kept as a ledger. Automatic PKR expense tracking from bank SMS."
+    />
+    <meta name="theme-color" content="#f5f2e9" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Finance" />
+    <meta name="apple-mobile-web-app-title" content="Batwa" />
     <link rel="apple-touch-icon" href="/pwa-192x192.png" />
-    <!-- Brand faces for the Batwa landing page. Both have a system fallback
-         in the token, so a blocked font request costs looks, not layout. -->
+
+    <!-- Brand faces. Both have a system fallback in the token, so a blocked
+         font request costs looks, not layout. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700;800&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <title>Finance Manager</title>
+
+    <!--
+      Resolve the theme BEFORE first paint. Doing this in React instead would
+      paint the light theme for a frame and then swap, which is exactly the
+      flash a dark-mode user notices most. Kept deliberately tiny and inline;
+      the key must match THEME_STORAGE_KEY in src/lib/theme.tsx.
+    -->
+    <script>
+      ;(function () {
+        try {
+          var stored = localStorage.getItem('batwa-theme')
+          var theme =
+            stored === 'light' || stored === 'dark'
+              ? stored
+              : window.matchMedia &&
+                  window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+          document.documentElement.dataset.theme = theme
+          if (theme === 'dark') {
+            document
+              .querySelector('meta[name="theme-color"]')
+              .setAttribute('content', '#111c18')
+          }
+        } catch (e) {
+          document.documentElement.dataset.theme = 'light'
+        }
+      })()
+    </script>
+
+    <title>Batwa — your money, kept</title>
   </head>
   <body>
     <div id="root"></div>
