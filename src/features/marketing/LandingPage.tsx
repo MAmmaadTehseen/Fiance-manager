@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom'
+import { Moon, Sun } from 'lucide-react'
+import { useTheme } from '@/lib/theme'
 import { BatwaLogo, BatwaWatermark, BatwaWordmark } from '@/components/BatwaLogo'
 
 /**
@@ -105,10 +107,13 @@ const PRIMARY_BTN =
   'rounded-[14px] bg-[var(--brand)] px-6 py-[14px] text-[15px] font-bold text-[var(--brand-on)] no-underline transition hover:brightness-110'
 
 export function LandingPage() {
+  const { theme, toggleTheme } = useTheme()
+  const dark = theme === 'dark'
+
   return (
-    <div data-theme="light" className="min-h-dvh bg-[var(--bg)] font-[family-name:var(--font-sans)] text-[var(--ink)]">
+    <div className="min-h-dvh bg-[var(--bg)] font-[family-name:var(--font-sans)] text-[var(--ink)]">
       {/* ---------------------------------------------------------- header */}
-      <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[oklch(0.962_0.012_95/0.88)] backdrop-blur-[10px]">
+      <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-background/85 backdrop-blur-[10px]">
         <div className={`${SHELL} flex items-center gap-3 py-[14px]`}>
           <BatwaLogo size={32} />
           <BatwaWordmark className="text-xl" />
@@ -120,6 +125,20 @@ export function LandingPage() {
             >
               How it works
             </a>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-pressed={dark}
+              aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={dark ? 'Light mode' : 'Dark mode'}
+              className="flex size-[38px] items-center justify-center rounded-[11px] border border-[var(--line)] text-[var(--sub)] transition-colors hover:bg-[var(--soft)] hover:text-[var(--ink)]"
+            >
+              {dark ? (
+                <Sun className="size-[17px]" aria-hidden />
+              ) : (
+                <Moon className="size-[17px]" aria-hidden />
+              )}
+            </button>
             <Link
               to="/sign-in"
               className="rounded-[11px] bg-[var(--brand)] px-4 py-[9px] text-sm font-bold text-[var(--brand-on)] no-underline transition hover:brightness-110"
@@ -211,7 +230,7 @@ export function LandingPage() {
           </div>
 
           <div className="mr-[clamp(0px,6vw,56px)] flex items-center gap-3 rounded-[20px] border border-[var(--line)] bg-[var(--card-bg)] px-[18px] py-4 shadow-[var(--shadow)]">
-            <span className="flex size-[38px] shrink-0 items-center justify-center rounded-xl bg-[oklch(0.5_0.12_155/0.12)] text-[var(--pos)]">
+            <span className="flex size-[38px] shrink-0 items-center justify-center rounded-xl bg-pos/[0.12] text-[var(--pos)]">
               <svg
                 width="16"
                 height="16"
@@ -316,7 +335,7 @@ export function LandingPage() {
       <section className={`${SHELL} pb-[clamp(48px,7vw,88px)]`}>
         <div className="flex flex-col items-center gap-[18px] rounded-[28px] bg-[var(--gold)] p-[clamp(32px,6vw,56px)] text-center">
           <BatwaLogo size={52} />
-          <h2 className="m-0 max-w-[560px] font-[family-name:var(--font-display)] text-[clamp(26px,4.5vw,42px)] font-extrabold tracking-[-0.02em] text-[oklch(0.25_0.05_75)] text-pretty">
+          <h2 className="m-0 max-w-[560px] font-[family-name:var(--font-display)] text-[clamp(26px,4.5vw,42px)] font-extrabold tracking-[-0.02em] text-gold-on text-pretty">
             Stop guessing where the month went.
           </h2>
           <Link
