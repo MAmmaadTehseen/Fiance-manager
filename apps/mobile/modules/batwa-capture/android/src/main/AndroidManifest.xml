@@ -1,0 +1,37 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- Merged into the app manifest by the Android Gradle plugin. -->
+
+  <application>
+    <!--
+      Manifest-registered, so Android starts the process to deliver an SMS
+      even when the app has been killed or force-stopped-then-relaunched.
+      A receiver registered from JS would only ever fire while the app runs,
+      which is almost never when a bank texts you.
+    -->
+    <receiver
+      android:name=".SmsReceiver"
+      android:enabled="true"
+      android:exported="true"
+      android:permission="android.permission.BROADCAST_SMS">
+      <intent-filter android:priority="999">
+        <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+      </intent-filter>
+    </receiver>
+
+    <!--
+      Fallback path, and the one that stays viable on Google Play: reading the
+      notification your SMS app posts is not covered by the restricted
+      SMS/Call Log policy. It also catches banks that push through their own
+      app rather than by text.
+    -->
+    <service
+      android:name=".BatwaNotificationListener"
+      android:exported="true"
+      android:label="Batwa"
+      android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+      <intent-filter>
+        <action android:name="android.service.notification.NotificationListenerService" />
+      </intent-filter>
+    </service>
+  </application>
+</manifest>

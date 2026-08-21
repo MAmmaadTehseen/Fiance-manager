@@ -12,7 +12,7 @@
     "build": "npm run build -w @batwa/web",
     "preview": "npm run preview -w @batwa/web",
     "lint": "npm run lint -w @batwa/web",
-    "typecheck": "npm run typecheck -w @batwa/core && npm run typecheck -w @batwa/web",
+    "typecheck": "npm run typecheck -w @batwa/core && npm run typecheck -w @batwa/web && npm run typecheck -w @batwa/mobile",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
@@ -22,7 +22,9 @@
     "test:parser": "bash supabase/tests/parser.sh",
     "test:ingest": "bash supabase/tests/ingest.sh",
     "assets:icons": "node scripts/make-icons.mjs ./apps/web/public",
-    "assets:og": "node scripts/make-og-card.mjs ./apps/web/public"
+    "assets:og": "node scripts/make-og-card.mjs ./apps/web/public",
+    "mobile": "npm run start -w @batwa/mobile",
+    "mobile:build": "npm run build:dev -w @batwa/mobile"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",

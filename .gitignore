@@ -40,3 +40,8 @@ dev.db
 
 # Scratch: decoded design files and render checks, all reproducible.
 .design/
+
+# Expo
+apps/mobile/.expo/
+apps/mobile/android/
+apps/mobile/ios/
