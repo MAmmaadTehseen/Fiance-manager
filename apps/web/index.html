@@ -2,7 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- SVG first for browsers that take it; PNG fallbacks for those that
+         do not, which otherwise look for /favicon.ico and find nothing. -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <!-- viewport-fit=cover lets the app paint into the notch / gesture area
          once installed; the CSS uses env(safe-area-inset-*) to stay clear. -->
     <meta
@@ -41,7 +45,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Batwa" />
-    <link rel="apple-touch-icon" href="/pwa-192x192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
     <!-- Brand faces. Both have a system fallback in the token, so a blocked
          font request costs looks, not layout. -->

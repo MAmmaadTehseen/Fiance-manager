@@ -118,7 +118,12 @@ function render(size, options = {}) {
     // Single-colour silhouette for Android's themed icons.
     monochrome = false,
     // Shrinks the artwork into the safe zone that cropping leaves visible.
+    // Above 1 it magnifies instead.
     inset = 1,
+    // At favicon sizes the milled edge is only a few pixels wide and reads as
+    // dirt rather than detail. Dropping it and letting the B fill the disc is
+    // what keeps the mark recognisable at 16px.
+    simplified = false,
   } = options
 
   const px = Buffer.alloc(size * size * 4)
@@ -134,7 +139,7 @@ function render(size, options = {}) {
       if (fullBleed && !transparent) colour = BRAND
       if (!transparent && Math.hypot(ux - 44, uy - 44) <= 40) colour = BRAND
       if (transparent && !monochrome && Math.hypot(ux - 44, uy - 44) <= 40) colour = BRAND
-      if (inDashedRing(ux, uy)) colour = monochrome ? ON : GOLD
+      if (!simplified && inDashedRing(ux, uy)) colour = monochrome ? ON : GOLD
       if (inB(ux, uy)) colour = ON
 
       const o = (py * size + pxi) * 4
@@ -170,6 +175,17 @@ if (mobile) {
   writeFileSync(`${out}/favicon.png`, render(48, { fullBleed: true, inset: 0.8 }))
   console.log('Batwa mobile assets written to', out)
 } else {
+  // Raster fallbacks: a browser without SVG-favicon support falls back to
+  // /favicon.ico, and with neither present it shows nothing at all.
+  writeFileSync(
+    `${out}/favicon-16x16.png`,
+    render(16, { fullBleed: true, simplified: true, inset: 1.5 }),
+  )
+  writeFileSync(
+    `${out}/favicon-32x32.png`,
+    render(32, { fullBleed: true, simplified: true, inset: 1.5 }),
+  )
+  writeFileSync(`${out}/apple-touch-icon.png`, render(180, { fullBleed: true, inset: 0.82 }))
   writeFileSync(`${out}/pwa-192x192.png`, render(192))
   writeFileSync(`${out}/pwa-512x512.png`, render(512))
   writeFileSync(

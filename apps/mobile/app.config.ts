@@ -66,7 +66,12 @@ const config: ExpoConfig = {
   extra: {
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-    eas: { projectId: process.env.EAS_PROJECT_ID },
+    // Hard-coded because `eas init` cannot write into a dynamic config, and
+    // EAS refuses to build without it. Env var still wins, for forks.
+    eas: {
+      projectId:
+        process.env.EAS_PROJECT_ID ?? '6d023af2-8e41-404e-b250-3d16f6d61ac6',
+    },
   },
 }
 

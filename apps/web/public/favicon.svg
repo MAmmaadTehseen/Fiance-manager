@@ -1,12 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 88" role="img" aria-label="Batwa">
-  <!-- Same geometry as src/components/BatwaLogo.tsx and scripts/make-icons.mjs.
-       Literal colours, not tokens: a favicon has no stylesheet. -->
-  <circle cx="44" cy="44" r="40" fill="#2a473c" />
-  <circle cx="44" cy="44" r="33" fill="none" stroke="#e6a83e" stroke-width="3"
-          stroke-dasharray="2 6" stroke-linecap="round" />
-  <rect x="28" y="26" width="10" height="36" fill="#f4f1e4" />
-  <path fill-rule="evenodd" fill="#f4f1e4"
-        d="M37 26 A15 8.8 0 0 1 37 43.6 Z M37 31.2 A7.5 3.6 0 0 1 37 38.4 Z" />
-  <path fill-rule="evenodd" fill="#f4f1e4"
-        d="M37 43.4 A17 9.6 0 0 1 37 62.6 Z M37 48.4 A9 4.6 0 0 1 37 57.6 Z" />
+  <!--
+    The simplified mark, not the full one.
+
+    A favicon is rendered at 16-32px. At that size the milled edge is a couple
+    of pixels wide and reads as dirt rather than detail, so it is dropped and
+    the B is enlarged to fill the disc. Same deliberate exception as the
+    favicon PNGs in scripts/make-icons.mjs; every larger consumer still draws
+    the full coin.
+
+    Literal colours, not tokens: a favicon has no stylesheet.
+  -->
+  <rect width="88" height="88" rx="18" fill="#2a473c" />
+  <g transform="translate(44 44) scale(1.32) translate(-44 -44)">
+    <rect x="28" y="26" width="10" height="36" fill="#f4f1e4" />
+    <path fill-rule="evenodd" fill="#f4f1e4"
+          d="M37 26 A15 8.8 0 0 1 37 43.6 Z M37 31.2 A7.5 3.6 0 0 1 37 38.4 Z" />
+    <path fill-rule="evenodd" fill="#f4f1e4"
+          d="M37 43.4 A17 9.6 0 0 1 37 62.6 Z M37 48.4 A9 4.6 0 0 1 37 57.6 Z" />
+  </g>
 </svg>
