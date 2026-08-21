@@ -47,6 +47,7 @@ export type Database = {
           last4: string | null
           name: string
           opening_balance: number
+          sms_senders: string[]
           type: Database["public"]["Enums"]["account_type"]
           updated_at: string
           user_id: string
@@ -63,6 +64,7 @@ export type Database = {
           last4?: string | null
           name: string
           opening_balance?: number
+          sms_senders?: string[]
           type: Database["public"]["Enums"]["account_type"]
           updated_at?: string
           user_id?: string
@@ -79,6 +81,7 @@ export type Database = {
           last4?: string | null
           name?: string
           opening_balance?: number
+          sms_senders?: string[]
           type?: Database["public"]["Enums"]["account_type"]
           updated_at?: string
           user_id?: string
@@ -564,8 +567,10 @@ export type Database = {
           archived_at: string | null
           balance: number | null
           currency: string | null
+          institution: string | null
           is_primary: boolean | null
           last_activity_at: string | null
+          last4: string | null
           name: string | null
           opening_balance: number | null
           projected_balance: number | null

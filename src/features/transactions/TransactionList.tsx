@@ -3,6 +3,7 @@ import { ArrowLeftRight, CircleHelp } from 'lucide-react'
 import { format, isToday, isYesterday, parseISO } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { formatMoney } from '@/lib/money'
+import { Avatar } from '@/components/ui/card'
 import type { TransactionRow } from '@/hooks/useTransactions'
 
 function dayLabel(iso: string): string {
@@ -50,12 +51,15 @@ export function TransactionList({
   if (loading) {
     return (
       <ul className="flex flex-col">
-        {Array.from({ length: 5 }, (_, i) => (
-          <li key={i} className="flex items-center gap-3 px-4 py-3 md:px-0">
-            <div className="size-9 animate-pulse rounded-full bg-muted" />
+        {Array.from({ length: 6 }, (_, i) => (
+          <li
+            key={i}
+            className="flex items-center gap-3 border-t border-line px-4 py-3 first:border-t-0 sm:px-5"
+          >
+            <div className="size-10 animate-pulse rounded-[13px] bg-soft" />
             <div className="flex-1 space-y-2">
-              <div className="h-3.5 w-1/3 animate-pulse rounded bg-muted" />
-              <div className="h-3 w-1/4 animate-pulse rounded bg-muted" />
+              <div className="h-3.5 w-1/3 animate-pulse rounded bg-soft" />
+              <div className="h-3 w-1/4 animate-pulse rounded bg-soft" />
             </div>
           </li>
         ))}
@@ -67,15 +71,13 @@ export function TransactionList({
     <div className="flex flex-col">
       {grouped.map(([day, rows]) => (
         <Fragment key={day}>
-          <p className="sticky top-0 z-10 bg-background/95 px-4 py-2 text-xs font-medium text-muted-foreground backdrop-blur md:px-0">
+          <p className="sticky top-0 z-[1] m-0 border-t border-line bg-card px-4 py-2 text-xs font-semibold text-sub first:border-t-0 sm:px-5">
             {dayLabel(rows[0]!.occurred_at)}
           </p>
 
           <ul className="flex flex-col">
             {rows.map((t) => {
               const needsReview = t.status === 'needs_review'
-              const Icon = t.type === 'transfer' ? ArrowLeftRight : null
-
               return (
                 <li key={t.id}>
                   <button
@@ -83,45 +85,52 @@ export function TransactionList({
                     onClick={() => onSelect?.(t)}
                     disabled={!onSelect}
                     className={cn(
-                      'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors md:rounded-lg md:px-3',
-                      onSelect && 'hover:bg-accent',
+                      'flex w-full items-center gap-3 border-t border-line px-4 py-2.5 text-left transition-colors sm:px-5',
+                      onSelect && 'hover:bg-soft',
                     )}
                   >
-                    <span
-                      className={cn(
-                        'flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
+                    <Avatar
+                      tone={
                         needsReview
-                          ? 'bg-warning/15 text-warning'
-                          : 'bg-muted text-muted-foreground',
-                      )}
-                      aria-hidden
+                          ? 'gold'
+                          : t.type === 'transfer'
+                            ? 'neutral'
+                            : 'neutral'
+                      }
+                      className="rounded-[13px] text-sm font-bold"
                     >
                       {needsReview ? (
-                        <CircleHelp className="size-4" />
-                      ) : Icon ? (
-                        <Icon className="size-4" />
+                        <CircleHelp className="size-4" aria-hidden />
+                      ) : t.type === 'transfer' ? (
+                        <ArrowLeftRight className="size-4" aria-hidden />
                       ) : (
-                        (t.merchant?.display_name ??
+                        (
+                          t.merchant?.display_name ??
                           t.category?.name ??
-                          '?')[0]?.toUpperCase()
+                          '?'
+                        )[0]?.toUpperCase()
                       )}
-                    </span>
+                    </Avatar>
 
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">
+                      <span className="block truncate text-[14.5px] font-semibold">
                         {primaryLabel(t)}
                       </span>
-                      <span className="block truncate text-xs text-muted-foreground">
+                      <span
+                        className={cn(
+                          'block truncate text-[12.5px]',
+                          needsReview ? 'text-gold-ink' : 'text-sub',
+                        )}
+                      >
                         {needsReview ? 'Needs a category' : secondaryLabel(t)}
                       </span>
                     </span>
 
                     <span
                       className={cn(
-                        'tabular shrink-0 text-sm font-semibold',
-                        t.type === 'income' && 'text-money-in',
-                        t.type === 'expense' && 'text-foreground',
-                        t.type === 'transfer' && 'text-money-neutral',
+                        'tabular shrink-0 text-[14.5px] font-bold',
+                        t.type === 'income' && 'text-pos',
+                        t.type === 'transfer' && 'text-sub',
                       )}
                     >
                       {t.type === 'income' ? '+' : t.type === 'expense' ? '−' : ''}

@@ -14,7 +14,9 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { processStoredMessage } from '../_shared/pipeline.ts'
 
-const MAX_BODY_BYTES = 4096
+// Generous: forwarders sometimes batch several messages into one request, and
+// a 413 silently loses a real transaction.
+const MAX_BODY_BYTES = 32768
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',

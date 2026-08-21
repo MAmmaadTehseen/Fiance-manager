@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700;800&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body { margin: 0; font-family: 'Schibsted Grotesk', system-ui, sans-serif;
+  --bg: oklch(0.962 0.012 95); --card: oklch(0.995 0.005 95); --ink: oklch(0.22 0.035 160);
+  --sub: oklch(0.47 0.025 160); --line: oklch(0.895 0.014 110); --soft: oklch(0.93 0.014 100);
+  --brand: oklch(0.32 0.06 160); --brand-on: oklch(0.965 0.02 90); --brand-soft: oklch(0.32 0.06 160 / 0.09);
+  --gold: oklch(0.78 0.15 75); --gold-ink: oklch(0.5 0.11 70); --gold-soft: oklch(0.78 0.15 75 / 0.16);
+  --pos: oklch(0.5 0.12 155); --neg: oklch(0.53 0.15 25); --shadow: 0 1px 2px oklch(0.3 0.04 160 / 0.06), 0 8px 24px -12px oklch(0.3 0.04 160 / 0.14);
+  background: var(--bg); }
+body[data-theme="dark"] { --bg: oklch(0.155 0.02 160); --card: oklch(0.205 0.025 160); --ink: oklch(0.95 0.015 95);
+  --sub: oklch(0.67 0.02 160); --line: oklch(0.29 0.025 160); --soft: oklch(0.25 0.025 160);
+  --brand: oklch(0.36 0.065 160); --brand-on: oklch(0.96 0.02 90); --brand-soft: oklch(0.75 0.1 160 / 0.14);
+  --gold: oklch(0.8 0.15 78); --gold-ink: oklch(0.8 0.15 78); --gold-soft: oklch(0.8 0.15 78 / 0.16);
+  --pos: oklch(0.74 0.12 155); --neg: oklch(0.7 0.13 25); --shadow: 0 1px 2px oklch(0 0 0 / 0.2), 0 8px 24px -12px oklch(0 0 0 / 0.4); }
+a { color: oklch(0.42 0.09 160); } a:hover { color: oklch(0.32 0.07 160); }
+body[data-theme="dark"] a { color: oklch(0.75 0.1 160); }
+input, select, textarea, button { font-family: inherit; }
+</style>
+</helmet>
+<div style="min-height: 100vh; background: var(--bg); color: var(--ink);">
+
+<sc-if value="{{ signedOut }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="Sign in" style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: clamp(16px, 5vw, 48px); gap: 28px;">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 14px;">
+      <svg width="64" height="64" viewBox="0 0 88 88"><circle cx="44" cy="44" r="40" fill="var(--brand)"></circle><circle cx="44" cy="44" r="33" fill="none" stroke="var(--gold)" stroke-width="3" stroke-dasharray="2 6" stroke-linecap="round"></circle><text x="44" y="58" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-size="40" font-weight="800" fill="var(--brand-on)">B</text></svg>
+      <p style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 34px; font-weight: 700; letter-spacing: -0.02em;">batwa<span style="color: var(--gold);">.</span></p>
+      <p style="margin: -6px 0 0; font-size: 15px; color: var(--sub); text-align: center; max-width: 300px; text-wrap: pretty;">Your money, kept. Bank SMS in, clean ledger out.</p>
+    </div>
+    <div style="width: 100%; max-width: 380px; background: var(--card); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); padding: clamp(20px, 5vw, 28px); display: flex; flex-direction: column; gap: 14px;">
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--sub);">Email
+        <input type="email" placeholder="hamza@gmail.com" style="height: 46px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 0 14px; font-size: 15px; outline: none;">
+      </label>
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--sub);">Password
+        <input type="password" placeholder="••••••••" style="height: 46px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 0 14px; font-size: 15px; outline: none;">
+      </label>
+      <button onClick="{{ signIn }}" style="height: 48px; border: none; border-radius: 12px; background: var(--brand); color: var(--brand-on); font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 4px;" style-hover="filter: brightness(1.1)">Sign in</button>
+      <p style="margin: 2px 0 0; font-size: 13.5px; color: var(--sub); text-align: center;">New here? <a href="#" style="font-weight: 600;">Create an account</a></p>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ signedIn }}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; min-height: 100vh;">
+
+  <sc-if value="{{ isWide }}" hint-placeholder-val="{{ true }}">
+    <nav style="width: 236px; flex-shrink: 0; position: sticky; top: 0; height: 100vh; box-sizing: border-box; padding: 24px 16px; display: flex; flex-direction: column; gap: 6px; border-right: 1px solid var(--line);">
+      <div style="display: flex; align-items: center; gap: 10px; padding: 4px 10px 22px;">
+        <svg width="34" height="34" viewBox="0 0 88 88"><circle cx="44" cy="44" r="40" fill="var(--brand)"></circle><circle cx="44" cy="44" r="33" fill="none" stroke="var(--gold)" stroke-width="3" stroke-dasharray="2 6" stroke-linecap="round"></circle><text x="44" y="58" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-size="40" font-weight="800" fill="var(--brand-on)">B</text></svg>
+        <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 21px; font-weight: 700; letter-spacing: -0.02em;">batwa<span style="color: var(--gold);">.</span></span>
+      </div>
+      <button onClick="{{ goDashboard }}" style="{{ navStyles.dashboard }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect></svg>Overview</button>
+      <button onClick="{{ goActivity }}" style="{{ navStyles.activity }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"></path><path d="M14 8H8"></path><path d="M16 12H8"></path><path d="M13 16H8"></path></svg>Activity</button>
+      <button onClick="{{ goInbox }}" style="{{ navStyles.inbox }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>Inbox<span style="margin-left: auto; background: var(--gold); color: oklch(0.28 0.06 75); font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;">3</span></button>
+      <button onClick="{{ goAccounts }}" style="{{ navStyles.accounts }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path></svg>Accounts</button>
+      <button onClick="{{ goSettings }}" style="{{ navStyles.settings }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>Settings</button>
+      <div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px;">
+        <button onClick="{{ openAdd }}" style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 46px; border: none; border-radius: 13px; background: var(--gold); color: oklch(0.28 0.06 75); font-size: 14.5px; font-weight: 700; cursor: pointer;" style-hover="filter: brightness(1.05)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>Add transaction</button>
+        <button onClick="{{ toggleTheme }}" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: transparent; color: var(--sub); font-size: 13.5px; font-weight: 600; cursor: pointer;" style-hover="background: var(--soft)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>{{ themeLabel }}</button>
+      </div>
+    </nav>
+  </sc-if>
+
+  <sc-if value="{{ isRail }}" hint-placeholder-val="{{ false }}">
+    <nav style="width: 74px; flex-shrink: 0; position: sticky; top: 0; height: 100vh; box-sizing: border-box; padding: 20px 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; border-right: 1px solid var(--line);">
+      <svg width="36" height="36" viewBox="0 0 88 88" style="margin-bottom: 14px;"><circle cx="44" cy="44" r="40" fill="var(--brand)"></circle><circle cx="44" cy="44" r="33" fill="none" stroke="var(--gold)" stroke-width="3" stroke-dasharray="2 6" stroke-linecap="round"></circle><text x="44" y="58" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-size="40" font-weight="800" fill="var(--brand-on)">B</text></svg>
+      <button onClick="{{ goDashboard }}" title="Overview" style="{{ railStyles.dashboard }}"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect></svg></button>
+      <button onClick="{{ goActivity }}" title="Activity" style="{{ railStyles.activity }}"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"></path><path d="M14 8H8"></path><path d="M16 12H8"></path><path d="M13 16H8"></path></svg></button>
+      <button onClick="{{ goInbox }}" title="Inbox" style="{{ railStyles.inbox }}"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg></button>
+      <button onClick="{{ goAccounts }}" title="Accounts" style="{{ railStyles.accounts }}"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path></svg></button>
+      <button onClick="{{ goSettings }}" title="Settings" style="{{ railStyles.settings }}"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path></svg></button>
+      <button onClick="{{ openAdd }}" title="Add transaction" style="margin-top: auto; width: 46px; height: 46px; border: none; border-radius: 14px; background: var(--gold); color: oklch(0.28 0.06 75); cursor: pointer; display: flex; align-items: center; justify-content: center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+    </nav>
+  </sc-if>
+
+  <main style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+    <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
+      <header style="position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: var(--bg); border-bottom: 1px solid var(--line);">
+        <svg width="30" height="30" viewBox="0 0 88 88"><circle cx="44" cy="44" r="40" fill="var(--brand)"></circle><circle cx="44" cy="44" r="33" fill="none" stroke="var(--gold)" stroke-width="3" stroke-dasharray="2 6" stroke-linecap="round"></circle><text x="44" y="58" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-size="40" font-weight="800" fill="var(--brand-on)">B</text></svg>
+        <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700;">batwa<span style="color: var(--gold);">.</span></span>
+        <button onClick="{{ toggleTheme }}" style="margin-left: auto; width: 38px; height: 38px; border: 1px solid var(--line); border-radius: 11px; background: transparent; color: var(--sub); cursor: pointer; display: flex; align-items: center; justify-content: center;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg></button>
+      </header>
+    </sc-if>
+
+    <div style="width: 100%; max-width: 1160px; margin: 0 auto; box-sizing: border-box; padding: clamp(16px, 3.5vw, 40px); display: flex; flex-direction: column; gap: clamp(20px, 3vw, 32px);">
+
+    <sc-if value="{{ showDashboard }}" hint-placeholder-val="{{ true }}">
+      <div data-screen-label="Dashboard" style="display: flex; flex-direction: column; gap: clamp(20px, 3vw, 28px);">
+        <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+          <div>
+            <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: clamp(26px, 4vw, 36px); font-weight: 700; letter-spacing: -0.02em;">Salaam, Hamza</h1>
+            <p style="margin: 4px 0 0; font-size: 15px; color: var(--sub);">Here's your money in August.</p>
+          </div>
+          <span style="font-size: 13px; font-weight: 600; color: var(--gold-ink); background: var(--gold-soft); padding: 6px 12px; border-radius: 999px;">Aug 2026</span>
+        </header>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: clamp(14px, 2vw, 20px);">
+          <div style="background: var(--brand); color: var(--brand-on); border-radius: 24px; padding: clamp(20px, 3vw, 28px); display: flex; flex-direction: column; gap: 18px; box-shadow: var(--shadow); position: relative; overflow: hidden;">
+            <svg width="170" height="170" viewBox="0 0 88 88" style="position: absolute; right: -34px; bottom: -44px; opacity: 0.12;"><circle cx="44" cy="44" r="40" fill="none" stroke="currentColor" stroke-width="4"></circle><circle cx="44" cy="44" r="33" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="2 6" stroke-linecap="round"></circle><text x="44" y="58" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-size="40" font-weight="800" fill="currentColor">B</text></svg>
+            <div>
+              <p style="margin: 0; font-size: 13.5px; font-weight: 600; opacity: 0.75;">Total balance</p>
+              <p style="margin: 6px 0 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: clamp(32px, 5vw, 44px); font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;">Rs 412,350</p>
+            </div>
+            <div style="display: flex; gap: clamp(16px, 3vw, 32px); flex-wrap: wrap;">
+              <div>
+                <p style="margin: 0; font-size: 12.5px; font-weight: 600; opacity: 0.75;">In this month</p>
+                <p style="margin: 3px 0 0; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; color: oklch(0.85 0.1 155);">+Rs 285,000</p>
+              </div>
+              <div>
+                <p style="margin: 0; font-size: 12.5px; font-weight: 600; opacity: 0.75;">Out this month</p>
+                <p style="margin: 3px 0 0; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--gold);">−Rs 96,420</p>
+              </div>
+              <div>
+                <p style="margin: 0; font-size: 12.5px; font-weight: 600; opacity: 0.75;">vs July</p>
+                <p style="margin: 3px 0 0; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; color: oklch(0.85 0.1 155);">▾ 8.2% less spent</p>
+              </div>
+            </div>
+          </div>
+          <div style="background: var(--card); border: 1px solid var(--line); border-radius: 24px; padding: clamp(20px, 3vw, 28px); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px;">
+              <h2 style="margin: 0; font-size: 15px; font-weight: 700;">Six months</h2>
+              <span style="font-size: 12.5px; color: var(--sub);"><span style="display: inline-block; width: 8px; height: 8px; border-radius: 3px; background: var(--brand); margin-right: 5px;"></span>In&nbsp;&nbsp;<span style="display: inline-block; width: 8px; height: 8px; border-radius: 3px; background: var(--gold); margin-right: 5px;"></span>Out</span>
+            </div>
+            <div style="flex: 1; display: flex; align-items: flex-end; gap: clamp(8px, 2%, 18px); min-height: 150px;">
+              <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;"><div style="width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 4px;"><div style="width: 34%; max-width: 20px; height: 121px; border-radius: 6px 6px 3px 3px; background: var(--brand);"></div><div style="width: 34%; max-width: 20px; height: 36px; border-radius: 6px 6px 3px 3px; background: var(--gold);"></div></div><span style="font-size: 11.5px; font-weight: 600; color: var(--sub);">Mar</span></div>
+              <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;"><div style="width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 4px;"><div style="width: 34%; max-width: 20px; height: 132px; border-radius: 6px 6px 3px 3px; background: var(--brand);"></div><div style="width: 34%; max-width: 20px; height: 42px; border-radius: 6px 6px 3px 3px; background: var(--gold);"></div></div><span style="font-size: 11.5px; font-weight: 600; color: var(--sub);">Apr</span></div>
+              <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;"><div style="width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 4px;"><div style="width: 34%; max-width: 20px; height: 125px; border-radius: 6px 6px 3px 3px; background: var(--brand);"></div><div style="width: 34%; max-width: 20px; height: 39px; border-radius: 6px 6px 3px 3px; background: var(--gold);"></div></div><span style="font-size: 11.5px; font-weight: 600; color: var(--sub);">May</span></div>
+              <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;"><div style="width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 4px;"><div style="width: 34%; max-width: 20px; height: 132px; border-radius: 6px 6px 3px 3px; background: var(--brand);"></div><div style="width: 34%; max-width: 20px; height: 47px; border-radius: 6px 6px 3px 3px; background: var(--gold);"></div></div><span style="font-size: 11.5px; font-weight: 600; color: var(--sub);">Jun</span></div>
+              <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;"><div style="width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 4px;"><div style="width: 34%; max-width: 20px; height: 132px; border-radius: 6px 6px 3px 3px; background: var(--brand);"></div><div style="width: 34%; max-width: 20px; height: 49px; border-radius: 6px 6px 3px 3px; background: var(--gold);"></div></div><span style="font-size: 11.5px; font-weight: 600; color: var(--sub);">Jul</span></div>
+              <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;"><div style="width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 4px;"><div style="width: 34%; max-width: 20px; height: 134px; border-radius: 6px 6px 3px 3px; background: var(--brand);"></div><div style="width: 34%; max-width: 20px; height: 45px; border-radius: 6px 6px 3px 3px; background: var(--gold);"></div></div><span style="font-size: 11.5px; font-weight: 700; color: var(--gold-ink);">Aug</span></div>
+            </div>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: clamp(14px, 2vw, 20px); align-items: start;">
+          <div style="background: var(--card); border: 1px solid var(--line); border-radius: 24px; padding: clamp(20px, 3vw, 26px); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 16px;">
+            <h2 style="margin: 0; font-size: 15px; font-weight: 700;">Where it went <span style="font-weight: 500; color: var(--sub);">· Rs 96,420</span></h2>
+            <div style="display: flex; flex-direction: column; gap: 13px;">
+              <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 108px; flex-shrink: 0; font-size: 13.5px; font-weight: 600;">Bills</span><div style="flex: 1; height: 10px; border-radius: 999px; background: var(--soft); overflow: hidden;"><div style="width: 25%; height: 100%; border-radius: 999px; background: var(--brand);"></div></div><span style="width: 72px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--sub);">24,069</span></div>
+              <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 108px; flex-shrink: 0; font-size: 13.5px; font-weight: 600;">Groceries</span><div style="flex: 1; height: 10px; border-radius: 999px; background: var(--soft); overflow: hidden;"><div style="width: 20%; height: 100%; border-radius: 999px; background: var(--brand); opacity: 0.85;"></div></div><span style="width: 72px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--sub);">19,720</span></div>
+              <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 108px; flex-shrink: 0; font-size: 13.5px; font-weight: 600;">Food &amp; dining</span><div style="flex: 1; height: 10px; border-radius: 999px; background: var(--soft); overflow: hidden;"><div style="width: 18.5%; height: 100%; border-radius: 999px; background: var(--gold);"></div></div><span style="width: 72px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--sub);">17,830</span></div>
+              <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 108px; flex-shrink: 0; font-size: 13.5px; font-weight: 600;">Shopping</span><div style="flex: 1; height: 10px; border-radius: 999px; background: var(--soft); overflow: hidden;"><div style="width: 13.4%; height: 100%; border-radius: 999px; background: var(--brand); opacity: 0.6;"></div></div><span style="width: 72px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--sub);">12,900</span></div>
+              <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 108px; flex-shrink: 0; font-size: 13.5px; font-weight: 600;">Transport</span><div style="flex: 1; height: 10px; border-radius: 999px; background: var(--soft); overflow: hidden;"><div style="width: 9.8%; height: 100%; border-radius: 999px; background: var(--gold); opacity: 0.7;"></div></div><span style="width: 72px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--sub);">9,470</span></div>
+              <div style="display: flex; align-items: center; gap: 12px;"><span style="width: 108px; flex-shrink: 0; font-size: 13.5px; font-weight: 600; color: var(--sub);">Everything else</span><div style="flex: 1; height: 10px; border-radius: 999px; background: var(--soft); overflow: hidden;"><div style="width: 12.9%; height: 100%; border-radius: 999px; background: var(--sub); opacity: 0.4;"></div></div><span style="width: 72px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--sub);">12,431</span></div>
+            </div>
+            <p style="margin: 0; font-size: 13px; color: var(--sub); border-top: 1px solid var(--line); padding-top: 14px;">Bills up <strong style="color: var(--neg);">Rs 4,100</strong> vs July — K-Electric summer tariff. Food down <strong style="color: var(--pos);">11%</strong>.</p>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: clamp(14px, 2vw, 20px);">
+            <div style="background: var(--card); border: 1px solid var(--line); border-radius: 24px; padding: clamp(20px, 3vw, 26px); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 14px;">
+              <div style="display: flex; align-items: baseline; justify-content: space-between;">
+                <h2 style="margin: 0; font-size: 15px; font-weight: 700;">Accounts</h2>
+                <button onClick="{{ goAccounts }}" style="border: none; background: none; padding: 0; font-size: 13.5px; font-weight: 600; color: var(--gold-ink); cursor: pointer;">Manage</button>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; align-items: center; gap: 12px; padding: 9px 0;"><span style="width: 38px; height: 38px; flex-shrink: 0; border-radius: 12px; background: var(--brand-soft); color: var(--brand); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; font-family: 'Bricolage Grotesque', sans-serif;">M</span><span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 14.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Meezan current</span><span style="display: block; font-size: 12.5px; color: var(--sub);">Bank · SMS connected</span></span><span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">Rs 391,240</span></div>
+                <div style="display: flex; align-items: center; gap: 12px; padding: 9px 0;"><span style="width: 38px; height: 38px; flex-shrink: 0; border-radius: 12px; background: var(--gold-soft); color: var(--gold-ink); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; font-family: 'Bricolage Grotesque', sans-serif;">J</span><span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 14.5px; font-weight: 600;">JazzCash</span><span style="display: block; font-size: 12.5px; color: var(--sub);">Wallet · SMS connected</span></span><span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">Rs 12,860</span></div>
+                <div style="display: flex; align-items: center; gap: 12px; padding: 9px 0;"><span style="width: 38px; height: 38px; flex-shrink: 0; border-radius: 12px; background: var(--soft); color: var(--sub); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; font-family: 'Bricolage Grotesque', sans-serif;">₨</span><span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 14.5px; font-weight: 600;">Cash</span><span style="display: block; font-size: 12.5px; color: var(--sub);">Tracked by hand</span></span><span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">Rs 8,250</span></div>
+              </div>
+            </div>
+            <div style="background: var(--gold-soft); border: 1px solid var(--gold); border-radius: 20px; padding: 18px 20px; display: flex; align-items: center; gap: 14px;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--gold-ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+              <p style="margin: 0; flex: 1; font-size: 13.5px; color: var(--ink);"><strong>3 SMS transactions</strong> waiting for review.</p>
+              <button onClick="{{ goInbox }}" style="border: none; border-radius: 10px; background: var(--brand); color: var(--brand-on); font-size: 13px; font-weight: 700; padding: 8px 14px; cursor: pointer; flex-shrink: 0;">Review</button>
+            </div>
+          </div>
+        </div>
+        <div style="background: var(--card); border: 1px solid var(--line); border-radius: 24px; padding: clamp(18px, 3vw, 26px); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 6px;">
+            <h2 style="margin: 0; font-size: 15px; font-weight: 700;">Recent activity</h2>
+            <button onClick="{{ goActivity }}" style="border: none; background: none; padding: 0; font-size: 13.5px; font-weight: 600; color: var(--gold-ink); cursor: pointer;">See all</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line);"><span style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 13px; background: var(--soft); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;">C</span><span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 14.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Careem</span><span style="display: block; font-size: 12.5px; color: var(--sub);">Transport · Meezan · Today</span></span><span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">−Rs 850</span></div>
+          <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line);"><span style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 13px; background: var(--gold-soft); color: var(--gold-ink); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;">F</span><span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 14.5px; font-weight: 600;">Foodpanda</span><span style="display: block; font-size: 12.5px; color: var(--gold-ink); font-weight: 600;">Needs a category · Today</span></span><span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">−Rs 1,640</span></div>
+          <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line);"><span style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 13px; background: var(--soft); display: flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"></path><path d="M4 7h16"></path><path d="m16 21 4-4-4-4"></path><path d="M20 17H4"></path></svg></span><span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 14.5px; font-weight: 600;">Meezan → Cash</span><span style="display: block; font-size: 12.5px; color: var(--sub);">Transfer · Yesterday</span></span><span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--sub);">Rs 5,000</span></div>
+          <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line);"><span style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 13px; background: var(--soft); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;">K</span><span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 14.5px; font-weight: 600;">K-Electric</span><span style="display: block; font-size: 12.5px; color: var(--sub);">Bills · Meezan · Yesterday</span></span><span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">−Rs 18,430</span></div>
+          <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line);"><span style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 13px; background: var(--brand-soft); color: var(--brand); display: flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"></path><path d="M17 17H7V7"></path></svg></span><span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 14.5px; font-weight: 600;">Salary — Systems Ltd</span><span style="display: block; font-size: 12.5px; color: var(--sub);">Income · Meezan · Aug 18</span></span><span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--pos);">+Rs 285,000</span></div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showActivity }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Activity" style="display: flex; flex-direction: column; gap: 20px;">
+        <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+          <div>
+            <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: clamp(26px, 4vw, 36px); font-weight: 700; letter-spacing: -0.02em;">Activity</h1>
+            <p style="margin: 4px 0 0; font-size: 15px; color: var(--sub);">Every rupee, in and out.</p>
+          </div>
+          <button onClick="{{ openAdd }}" style="display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 18px; border: none; border-radius: 12px; background: var(--brand); color: var(--brand-on); font-size: 14px; font-weight: 700; cursor: pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>Add</button>
+        </header>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <span style="font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 999px; background: var(--brand); color: var(--brand-on);">All</span>
+          <span style="font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); color: var(--sub); background: var(--card);">Expenses</span>
+          <span style="font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); color: var(--sub); background: var(--card);">Income</span>
+          <span style="font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); color: var(--sub); background: var(--card);">Transfers</span>
+          <span style="font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); color: var(--gold-ink); background: var(--card);">Uncategorised · 1</span>
+        </div>
+        <div style="background: var(--card); border: 1px solid var(--line); border-radius: 24px; box-shadow: var(--shadow); overflow: hidden;">
+          <p style="margin: 0; padding: 12px 22px 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--sub);">Today · Thu 21 Aug</p>
+          <div style="display: flex; align-items: center; gap: 14px; padding: 13px 22px;"><span style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 13px; background: var(--soft); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;">C</span><span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 14.5px; font-weight: 600;">Careem</span><span style="display: block; font-size: 12.5px; color: var(--sub);">Transport · Meezan current</span></span><span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">−Rs 850</span></div>
+          <div style="display: flex; align-items: center; gap: 14px; padding: 13px 22px; background: var(--gold-soft);"><span style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 13px; background: var(--card); color: var(--gold-ink); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;">F</span><span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 14.5px; font-weight: 600;">Foodpanda</span><span style="display: block; font-size: 12.5px; color: var(--gold-ink); font-weight: 600;">Tap to pick a category</span></span><span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">−Rs 1,640</span></div>
+          <div style="display: flex; align-items: center; gap: 14px; padding: 13px 22px;"><span style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 13px; background: var(--soft); display: flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--sub)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"></path><path d="M4 7h16"></path><path d="m16 21 4-4-4-4"></path><path d="M20 17H4"></path></svg></span><span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 14.5px; font-weight: 600;">Easypaisa → Cash</span><span style="display: block; font-size: 12.5px; color: var(--sub);">Transfer</span></span><span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--sub);">Rs 5,000</span></div>
+          <p style="margin: 0; padding: 12px 22px 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--sub); border-top: 1px solid var(--line);">Yesterday · Wed 20 Aug</p>
+          <div style="display: flex; align-items: center; gap: 14px; padding: 13px 22px;"><span style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 13px; background: var(--soft); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;">K</span><span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 14.5px; font-weight: 600;">K-Electric</span><span style="display: block; font-size: 12.5px; color: var(--sub);">Bills · Meezan current</span></span><span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">−Rs 18,430</span></div>
+          <div style="display: flex; align-items: center; gap: 14px; padding: 13px 22px;"><span style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 13px; background: var(--soft); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;">I</span><span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 14.5px; font-weight: 600;">Imtiaz Super Market</span><span style="display: block; font-size: 12.5px; color: var(--sub);">Groceries · Meezan current</span></span><span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">−Rs 7,240</span></div>
+          <div style="display: flex; align-items: center; gap: 14px; padding: 13px 22px;"><span style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 13px; background: var(--soft); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;">Ch</span><span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 14.5px; font-weight: 600;">Chaaye Khana</span><span style="display: block; font-size: 12.5px; color: var(--sub);">Food &amp; dining · Cash</span></span><span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">−Rs 1,150</span></div>
+          <p style="margin: 0; padding: 12px 22px 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--sub); border-top: 1px solid var(--line);">Tue 18 Aug</p>
+          <div style="display: flex; align-items: center; gap: 14px; padding: 13px 22px;"><span style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 13px; background: var(--brand-soft); color: var(--brand); display: flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"></path><path d="M17 17H7V7"></path></svg></span><span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 14.5px; font-weight: 600;">Salary — Systems Ltd</span><span style="display: block; font-size: 12.5px; color: var(--sub);">Income · Meezan current</span></span><span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--pos);">+Rs 285,000</span></div>
+          <div style="display: flex; align-items: center; gap: 14px; padding: 13px 22px;"><span style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 13px; background: var(--soft); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;">N</span><span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 14.5px; font-weight: 600;">Netflix</span><span style="display: block; font-size: 12.5px; color: var(--sub);">Subscriptions · Meezan current</span></span><span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">−Rs 1,100</span></div>
+          <div style="display: flex; align-items: center; gap: 14px; padding: 13px 22px;"><span style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 13px; background: var(--soft); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;">D</span><span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 14.5px; font-weight: 600;">Daraz</span><span style="display: block; font-size: 12.5px; color: var(--sub);">Shopping · JazzCash</span></span><span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">−Rs 3,850</span></div>
+          <p style="margin: 0; padding: 12px 22px 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--sub); border-top: 1px solid var(--line);">Mon 17 Aug</p>
+          <div style="display: flex; align-items: center; gap: 14px; padding: 13px 22px;"><span style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 13px; background: var(--soft); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;">P</span><span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 14.5px; font-weight: 600;">PTCL Flash Fiber</span><span style="display: block; font-size: 12.5px; color: var(--sub);">Bills · Meezan current</span></span><span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">−Rs 3,299</span></div>
+          <div style="display: flex; align-items: center; gap: 14px; padding: 13px 22px 20px;"><span style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 13px; background: var(--soft); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;">M</span><span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 14.5px; font-weight: 600;">Metro Cash &amp; Carry</span><span style="display: block; font-size: 12.5px; color: var(--sub);">Groceries · Meezan current</span></span><span style="font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;">−Rs 12,480</span></div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showInbox }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Inbox" style="display: flex; flex-direction: column; gap: 20px;">
+        <header>
+          <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: clamp(26px, 4vw, 36px); font-weight: 700; letter-spacing: -0.02em;">Inbox</h1>
+          <p style="margin: 4px 0 0; font-size: 15px; color: var(--sub);">Bank SMS your phone forwarded — confirm and they join the ledger.</p>
+        </header>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: clamp(14px, 2vw, 20px); align-items: start;">
+          <div style="background: var(--card); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 11.5px; font-weight: 700; letter-spacing: 0.05em; color: var(--brand); background: var(--brand-soft); padding: 4px 10px; border-radius: 999px;">MEEZAN · 2 MIN AGO</span>
+              <span style="margin-left: auto; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums;">−Rs 1,640</span>
+            </div>
+            <p style="margin: 0; font-size: 13px; line-height: 1.55; color: var(--sub); background: var(--soft); border-radius: 12px; padding: 12px 14px; font-family: ui-monospace, monospace;">Dear Customer, Rs 1,640.00 debited from A/c **4821 at FOODPANDA on 21-Aug. Avl Bal Rs 391,240.</p>
+            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13.5px;">
+              <div style="display: flex; justify-content: space-between;"><span style="color: var(--sub);">Merchant</span><strong>Foodpanda</strong></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: var(--sub);">Account</span><strong>Meezan current</strong></div>
+              <div style="display: flex; justify-content: space-between; align-items: center;"><span style="color: var(--sub);">Category</span><span style="font-size: 12.5px; font-weight: 700; color: var(--gold-ink); background: var(--gold-soft); padding: 4px 10px; border-radius: 999px;">Food &amp; dining · suggested</span></div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button style="flex: 1; height: 40px; border: none; border-radius: 11px; background: var(--brand); color: var(--brand-on); font-size: 13.5px; font-weight: 700; cursor: pointer;">Confirm</button>
+              <button style="height: 40px; padding: 0 16px; border: 1px solid var(--line); border-radius: 11px; background: transparent; color: var(--sub); font-size: 13.5px; font-weight: 600; cursor: pointer;">Dismiss</button>
+            </div>
+          </div>
+          <div style="background: var(--card); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 11.5px; font-weight: 700; letter-spacing: 0.05em; color: var(--gold-ink); background: var(--gold-soft); padding: 4px 10px; border-radius: 999px;">JAZZCASH · 1 HR AGO</span>
+              <span style="margin-left: auto; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--pos);">+Rs 5,000</span>
+            </div>
+            <p style="margin: 0; font-size: 13px; line-height: 1.55; color: var(--sub); background: var(--soft); border-radius: 12px; padding: 12px 14px; font-family: ui-monospace, monospace;">You have received Rs 5,000.00 from 0300*****42 via JazzCash. TID 8834021. Balance Rs 12,860.</p>
+            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13.5px;">
+              <div style="display: flex; justify-content: space-between;"><span style="color: var(--sub);">Sender</span><strong>Ali (saved contact)</strong></div>
+              <div style="display: flex; justify-content: space-between;"><span style="color: var(--sub);">Account</span><strong>JazzCash</strong></div>
+              <div style="display: flex; justify-content: space-between; align-items: center;"><span style="color: var(--sub);">Type</span><span style="font-size: 12.5px; font-weight: 700; color: var(--brand); background: var(--brand-soft); padding: 4px 10px; border-radius: 999px;">Income · suggested</span></div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button style="flex: 1; height: 40px; border: none; border-radius: 11px; background: var(--brand); color: var(--brand-on); font-size: 13.5px; font-weight: 700; cursor: pointer;">Confirm</button>
+              <button style="height: 40px; padding: 0 16px; border: 1px solid var(--line); border-radius: 11px; background: transparent; color: var(--sub); font-size: 13.5px; font-weight: 600; cursor: pointer;">Dismiss</button>
+            </div>
+          </div>
+          <div style="background: var(--card); border: 1px dashed var(--line); border-radius: 22px; padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 11.5px; font-weight: 700; letter-spacing: 0.05em; color: var(--neg); background: oklch(0.55 0.15 25 / 0.12); padding: 4px 10px; border-radius: 999px;">COULDN'T PARSE · 3 HRS AGO</span>
+            </div>
+            <p style="margin: 0; font-size: 13px; line-height: 1.55; color: var(--sub); background: var(--soft); border-radius: 12px; padding: 12px 14px; font-family: ui-monospace, monospace;">MEEZAN BANK: Your requested statement for A/c **4821 has been emailed. For help call 111-331-331.</p>
+            <p style="margin: 0; font-size: 13.5px; color: var(--sub);">No amount found — this looks like a notice, not a transaction.</p>
+            <div style="display: flex; gap: 8px;">
+              <button style="flex: 1; height: 40px; border: 1px solid var(--line); border-radius: 11px; background: transparent; color: var(--ink); font-size: 13.5px; font-weight: 600; cursor: pointer;">Enter manually</button>
+              <button style="height: 40px; padding: 0 16px; border: 1px solid var(--line); border-radius: 11px; background: transparent; color: var(--sub); font-size: 13.5px; font-weight: 600; cursor: pointer;">Dismiss</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showAccounts }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Accounts" style="display: flex; flex-direction: column; gap: 20px;">
+        <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+          <div>
+            <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: clamp(26px, 4vw, 36px); font-weight: 700; letter-spacing: -0.02em;">Accounts</h1>
+            <p style="margin: 4px 0 0; font-size: 15px; color: var(--sub);">Rs 412,350 across 3 places.</p>
+          </div>
+        </header>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: clamp(14px, 2vw, 20px);">
+          <div style="background: var(--brand); color: var(--brand-on); border-radius: 22px; padding: 24px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 24px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="width: 40px; height: 40px; border-radius: 13px; background: oklch(1 0 0 / 0.14); display: flex; align-items: center; justify-content: center; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800;">M</span>
+              <div><p style="margin: 0; font-size: 15px; font-weight: 700;">Meezan current</p><p style="margin: 1px 0 0; font-size: 12.5px; opacity: 0.7;">Bank · **4821</p></div>
+              <span style="margin-left: auto; font-size: 11px; font-weight: 700; background: var(--gold); color: oklch(0.28 0.06 75); padding: 3px 9px; border-radius: 999px;">SMS</span>
+            </div>
+            <div>
+              <p style="margin: 0; font-size: 12.5px; opacity: 0.7;">Balance</p>
+              <p style="margin: 3px 0 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums;">Rs 391,240</p>
+            </div>
+          </div>
+          <div style="background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 24px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 24px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="width: 40px; height: 40px; border-radius: 13px; background: var(--gold-soft); color: var(--gold-ink); display: flex; align-items: center; justify-content: center; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800;">J</span>
+              <div><p style="margin: 0; font-size: 15px; font-weight: 700;">JazzCash</p><p style="margin: 1px 0 0; font-size: 12.5px; color: var(--sub);">Wallet · 0301***88</p></div>
+              <span style="margin-left: auto; font-size: 11px; font-weight: 700; background: var(--gold-soft); color: var(--gold-ink); padding: 3px 9px; border-radius: 999px;">SMS</span>
+            </div>
+            <div>
+              <p style="margin: 0; font-size: 12.5px; color: var(--sub);">Balance</p>
+              <p style="margin: 3px 0 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums;">Rs 12,860</p>
+            </div>
+          </div>
+          <div style="background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 24px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 24px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="width: 40px; height: 40px; border-radius: 13px; background: var(--soft); color: var(--sub); display: flex; align-items: center; justify-content: center; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800;">₨</span>
+              <div><p style="margin: 0; font-size: 15px; font-weight: 700;">Cash</p><p style="margin: 1px 0 0; font-size: 12.5px; color: var(--sub);">Tracked by hand</p></div>
+            </div>
+            <div>
+              <p style="margin: 0; font-size: 12.5px; color: var(--sub);">Balance</p>
+              <p style="margin: 3px 0 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums;">Rs 8,250</p>
+            </div>
+          </div>
+          <button style="min-height: 160px; border: 1.5px dashed var(--line); border-radius: 22px; background: transparent; color: var(--sub); font-size: 14.5px; font-weight: 600; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;" style-hover="border-color: var(--brand); color: var(--brand)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>Add an account</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showSettings }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Settings" style="display: flex; flex-direction: column; gap: 20px; max-width: 640px;">
+        <header>
+          <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: clamp(26px, 4vw, 36px); font-weight: 700; letter-spacing: -0.02em;">Settings</h1>
+        </header>
+        <div style="background: var(--card); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); padding: 22px; display: flex; align-items: center; gap: 14px;">
+          <span style="width: 48px; height: 48px; border-radius: 16px; background: var(--brand); color: var(--brand-on); display: flex; align-items: center; justify-content: center; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 800;">H</span>
+          <div style="flex: 1; min-width: 0;">
+            <p style="margin: 0; font-size: 15.5px; font-weight: 700;">Hamza Riaz</p>
+            <p style="margin: 2px 0 0; font-size: 13.5px; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">hamza.riaz@gmail.com</p>
+          </div>
+        </div>
+        <div style="background: var(--card); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); padding: 22px; display: flex; flex-direction: column; gap: 16px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"></rect><path d="M12 18h.01"></path></svg>
+            <h2 style="margin: 0; font-size: 15.5px; font-weight: 700;">Phone connection</h2>
+            <span style="margin-left: auto; font-size: 11.5px; font-weight: 700; color: var(--pos); background: oklch(0.5 0.12 155 / 0.12); padding: 4px 10px; border-radius: 999px;">Connected</span>
+          </div>
+          <p style="margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--sub);">Your phone forwards bank SMS to Batwa. The token below lives only on your device — rotate it if you get a new phone.</p>
+          <div style="display: flex; align-items: center; gap: 10px; background: var(--soft); border-radius: 12px; padding: 12px 14px;">
+            <code style="flex: 1; min-width: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink);">btw_9f3k…d2a1</code>
+            <button style="border: none; background: var(--card); border-radius: 9px; padding: 7px 12px; font-size: 12.5px; font-weight: 700; color: var(--brand); cursor: pointer; flex-shrink: 0;">Copy</button>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button style="height: 38px; padding: 0 16px; border: 1px solid var(--line); border-radius: 11px; background: transparent; color: var(--ink); font-size: 13px; font-weight: 600; cursor: pointer;">Rotate token</button>
+            <button style="height: 38px; padding: 0 16px; border: 1px solid var(--line); border-radius: 11px; background: transparent; color: var(--neg); font-size: 13px; font-weight: 600; cursor: pointer;">Disconnect</button>
+          </div>
+        </div>
+        <div style="background: var(--card); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); padding: 22px; display: flex; align-items: center; gap: 14px;">
+          <div style="flex: 1;">
+            <h2 style="margin: 0; font-size: 15.5px; font-weight: 700;">Appearance</h2>
+            <p style="margin: 3px 0 0; font-size: 13.5px; color: var(--sub);">{{ themeDesc }}</p>
+          </div>
+          <button onClick="{{ toggleTheme }}" style="height: 40px; padding: 0 18px; border: 1px solid var(--line); border-radius: 11px; background: var(--soft); color: var(--ink); font-size: 13.5px; font-weight: 700; cursor: pointer;">{{ themeLabel }}</button>
+        </div>
+        <button onClick="{{ signOut }}" style="display: flex; align-items: center; justify-content: center; gap: 9px; height: 46px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--neg); font-size: 14px; font-weight: 700; cursor: pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>Sign out</button>
+      </div>
+    </sc-if>
+
+    </div>
+    <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}"><div style="height: 92px;"></div></sc-if>
+  </main>
+</div>
+
+<sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
+  <nav style="position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; align-items: center; justify-content: space-around; gap: 2px; padding: 8px max(8px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--line);">
+    <button onClick="{{ goDashboard }}" style="{{ tabStyles.dashboard }}"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect></svg><span style="font-size: 10.5px; font-weight: 700;">Home</span></button>
+    <button onClick="{{ goActivity }}" style="{{ tabStyles.activity }}"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"></path><path d="M14 8H8"></path><path d="M16 12H8"></path><path d="M13 16H8"></path></svg><span style="font-size: 10.5px; font-weight: 700;">Activity</span></button>
+    <button onClick="{{ openAdd }}" style="width: 52px; height: 52px; margin-top: -22px; border: none; border-radius: 18px; background: var(--gold); color: oklch(0.28 0.06 75); cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow); flex-shrink: 0;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></button>
+    <button onClick="{{ goInbox }}" style="{{ tabStyles.inbox }}"><span style="position: relative; display: flex;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg><span style="position: absolute; top: -3px; right: -6px; width: 15px; height: 15px; border-radius: 999px; background: var(--gold); color: oklch(0.28 0.06 75); font-size: 9.5px; font-weight: 800; display: flex; align-items: center; justify-content: center;">3</span></span><span style="font-size: 10.5px; font-weight: 700;">Inbox</span></button>
+    <button onClick="{{ goSettings }}" style="{{ tabStyles.settings }}"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path></svg><span style="font-size: 10.5px; font-weight: 700;">Settings</span></button>
+  </nav>
+</sc-if>
+
+<sc-if value="{{ showAdd }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="Add transaction" style="position: fixed; inset: 0; z-index: 40; background: oklch(0.15 0.02 160 / 0.45); display: flex; align-items: flex-end; justify-content: center; padding: 0;" onClick="{{ closeAdd }}">
+    <div onClick="{{ stopClick }}" style="width: 100%; max-width: 480px; max-height: 92vh; overflow: auto; background: var(--card); border-radius: 24px 24px 0 0; box-shadow: var(--shadow); padding: clamp(20px, 4vw, 28px); box-sizing: border-box; display: flex; flex-direction: column; gap: 18px;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <h2 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 21px; font-weight: 700;">Add transaction</h2>
+        <button onClick="{{ closeAdd }}" style="width: 36px; height: 36px; border: none; border-radius: 11px; background: var(--soft); color: var(--sub); cursor: pointer; display: flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+      </div>
+      <div style="display: flex; gap: 6px; background: var(--soft); border-radius: 13px; padding: 5px;">
+        <span style="flex: 1; text-align: center; padding: 9px 0; border-radius: 9px; background: var(--card); font-size: 13.5px; font-weight: 700; box-shadow: var(--shadow);">Expense</span>
+        <span style="flex: 1; text-align: center; padding: 9px 0; border-radius: 9px; font-size: 13.5px; font-weight: 600; color: var(--sub);">Income</span>
+        <span style="flex: 1; text-align: center; padding: 9px 0; border-radius: 9px; font-size: 13.5px; font-weight: 600; color: var(--sub);">Transfer</span>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 8px; justify-content: center; padding: 8px 0;">
+        <span style="font-size: 20px; font-weight: 600; color: var(--sub);">Rs</span>
+        <input type="text" placeholder="0" style="width: 180px; border: none; outline: none; background: transparent; color: var(--ink); font-family: 'Bricolage Grotesque', sans-serif; font-size: 48px; font-weight: 700; letter-spacing: -0.02em; text-align: center; font-variant-numeric: tabular-nums;">
+      </div>
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--sub);">Merchant or note
+        <input type="text" placeholder="e.g. Imtiaz Super Market" style="height: 46px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 0 14px; font-size: 15px; outline: none;">
+      </label>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 12px;">
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--sub);">Account
+          <select style="height: 46px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 0 12px; font-size: 15px; outline: none;"><option>Meezan current</option><option>JazzCash</option><option>Cash</option></select>
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--sub);">Date
+          <input type="date" value="2026-08-21" style="height: 46px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 0 12px; font-size: 15px; outline: none; box-sizing: border-box;">
+        </label>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <span style="font-size: 13px; font-weight: 600; color: var(--sub);">Category</span>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <span style="font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 999px; background: var(--brand); color: var(--brand-on);">Groceries</span>
+          <span style="font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); color: var(--sub);">Food &amp; dining</span>
+          <span style="font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); color: var(--sub);">Transport</span>
+          <span style="font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); color: var(--sub);">Bills</span>
+          <span style="font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); color: var(--sub);">Shopping</span>
+          <span style="font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); color: var(--sub);">Other</span>
+        </div>
+      </div>
+      <button onClick="{{ closeAdd }}" style="height: 50px; border: none; border-radius: 14px; background: var(--brand); color: var(--brand-on); font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 4px;">Save transaction</button>
+    </div>
+  </div>
+</sc-if>
+
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;light&quot;, &quot;dark&quot;], &quot;default&quot;: &quot;light&quot;, &quot;tsType&quot;: &quot;'light' | 'dark'&quot;, &quot;section&quot;: &quot;Appearance&quot;}, &quot;startSignedOut&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;State&quot;}}">
+class Component extends DCLogic {
+  state = { screen: 'dashboard', dark: null, signedOut: null, showAdd: false, w: typeof window !== 'undefined' ? window.innerWidth : 1280 };
+  componentDidMount() {
+    this._r = () => this.setState({ w: window.innerWidth });
+    window.addEventListener('resize', this._r);
+    this._applyTheme();
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this._r); }
+  componentDidUpdate() { this._applyTheme(); }
+  _dark() { return this.state.dark ?? ((this.props.theme ?? 'light') === 'dark'); }
+  _applyTheme() { document.body.dataset.theme = this._dark() ? 'dark' : 'light'; }
+  _nav(id) {
+    const a = this.state.screen === id;
+    return { display: 'flex', alignItems: 'center', gap: '12px', padding: '11px 14px', borderRadius: '12px', cursor: 'pointer', width: '100%', textAlign: 'left', fontSize: '14.5px', fontWeight: a ? 700 : 600, color: a ? 'var(--brand-on)' : 'var(--sub)', background: a ? 'var(--brand)' : 'transparent', border: 'none', fontFamily: 'inherit' };
+  }
+  _rail(id) {
+    const a = this.state.screen === id;
+    return { width: '46px', height: '46px', borderRadius: '13px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: a ? 'var(--brand-on)' : 'var(--sub)', background: a ? 'var(--brand)' : 'transparent' };
+  }
+  _tab(id) {
+    const a = this.state.screen === id;
+    return { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', padding: '6px 2px', border: 'none', background: 'none', cursor: 'pointer', color: a ? 'var(--brand)' : 'var(--sub)', borderRadius: '10px' };
+  }
+  _go(s) { return () => this.setState({ screen: s }); }
+  renderVals() {
+    const w = this.state.w, dark = this._dark();
+    const signedOut = this.state.signedOut ?? (this.props.startSignedOut ?? false);
+    const ids = ['dashboard', 'activity', 'inbox', 'accounts', 'settings'];
+    const navStyles = {}, railStyles = {}, tabStyles = {};
+    ids.forEach(i => { navStyles[i] = this._nav(i); railStyles[i] = this._rail(i); tabStyles[i] = this._tab(i); });
+    return {
+      signedOut, signedIn: !signedOut,
+      isMobile: w < 640, isRail: w >= 640 && w < 1024, isWide: w >= 1024,
+      showDashboard: this.state.screen === 'dashboard', showActivity: this.state.screen === 'activity',
+      showInbox: this.state.screen === 'inbox', showAccounts: this.state.screen === 'accounts',
+      showSettings: this.state.screen === 'settings', showAdd: this.state.showAdd,
+      navStyles, railStyles, tabStyles,
+      goDashboard: this._go('dashboard'), goActivity: this._go('activity'), goInbox: this._go('inbox'),
+      goAccounts: this._go('accounts'), goSettings: this._go('settings'),
+      openAdd: () => this.setState({ showAdd: true }), closeAdd: () => this.setState({ showAdd: false }),
+      stopClick: (e) => e.stopPropagation(),
+      toggleTheme: () => this.setState({ dark: !dark }),
+      themeLabel: dark ? 'Light mode' : 'Dark mode',
+      themeDesc: dark ? 'Dark — easy on late-night ledger checks.' : 'Light — the default cream look.',
+      signOut: () => this.setState({ signedOut: true, screen: 'dashboard' }),
+      signIn: () => this.setState({ signedOut: false }),
+    };
+  }
+}
+</script>
+</body>
+</html>

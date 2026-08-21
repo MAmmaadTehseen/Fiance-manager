@@ -14,6 +14,13 @@ import { parseSms, kindToTransactionType, type ParserTemplate } from './parser.t
 /** A resend, or the same payment typed by hand, within this window. */
 const DEDUPE_WINDOW_SECONDS = 90
 
+/**
+ * How far apart the two halves of an internal transfer may arrive. Both banks
+ * announce the same movement, and RAAST legs can lag, so this is deliberately
+ * wider than the general dedupe window.
+ */
+const TRANSFER_MATCH_WINDOW_SECONDS = 600
+
 export type StoredMessage = {
   id: string
   sender: string
@@ -42,30 +49,59 @@ export type PipelineResult = {
   error?: string
 }
 
+type OwnAccount = { id: string; currency: string }
+
+/** Looks up one of the user's own accounts by its stored short identifier. */
+async function findAccountByLast4(
+  db: SupabaseClient,
+  userId: string,
+  last4: string | null,
+): Promise<OwnAccount | null> {
+  if (!last4) return null
+  const { data } = await db
+    .from('accounts')
+    .select('id, currency')
+    .eq('user_id', userId)
+    .eq('last4', last4)
+    .is('archived_at', null)
+    .maybeSingle()
+  return data ?? null
+}
+
 /**
- * Resolves which account a message belongs to.
+ * Resolves which of the user's accounts a message is about.
  *
- * Guessing wrong corrupts balances silently, which is worse than asking, so we
- * only fall back to a sole candidate when there is genuinely no ambiguity.
+ * Tried in order of how much the message actually tells us. Guessing wrong
+ * corrupts balances silently, which is worse than asking, so the last resort
+ * is to give up and let the inbox ask once.
  */
 async function resolveAccount(
   db: SupabaseClient,
   userId: string,
   last4: string | null,
-): Promise<{ id: string; currency: string } | null> {
-  if (last4) {
+  sender: string,
+): Promise<OwnAccount | null> {
+  // 1. The message named the account outright.
+  const byLast4 = await findAccountByLast4(db, userId, last4)
+  if (byLast4) return byLast4
+
+  // 2. Outgoing alerts name only the recipient, so fall back to which bank
+  //    sent the message. Learned once via the inbox, then automatic.
+  const senderKey = sender.trim().toUpperCase()
+  if (senderKey) {
     const { data } = await db
       .from('accounts')
       .select('id, currency')
       .eq('user_id', userId)
-      .eq('last4', last4)
       .is('archived_at', null)
+      .contains('sms_senders', [senderKey])
+      .limit(1)
       .maybeSingle()
-    return data ?? null
+    if (data) return data
   }
 
-  // Wallet messages often carry no card digits. If there is exactly one
-  // non-cash account it cannot be anything else.
+  // 3. Wallet messages often carry no digits at all. If there is exactly one
+  //    non-cash account it cannot be anything else.
   const { data } = await db
     .from('accounts')
     .select('id, currency')
@@ -137,7 +173,7 @@ export async function processStoredMessage(
   const fields = result.fields
   const occurredAt = fields.occurredAt ?? receivedAt
 
-  const account = await resolveAccount(db, userId, fields.last4)
+  const account = await resolveAccount(db, userId, fields.last4, message.sender)
   if (!account) {
     return await finish(
       {
@@ -155,7 +191,22 @@ export async function processStoredMessage(
     )
   }
 
-  const txType = kindToTransactionType(result.kind)
+  const parsedType = kindToTransactionType(result.kind)
+
+  // --- is this money moving between the user's own accounts? --------------
+  // Both banks announce the same movement, so treating each half as spending
+  // and income would invent two transactions and leave the ledger showing no
+  // net change on the destination while the source is never touched. One
+  // transfer is the truth: out of one account, into the other.
+  const ownCounterparty = await findAccountByLast4(
+    db,
+    userId,
+    fields.counterpartyLast4,
+  )
+  const isInternalTransfer =
+    ownCounterparty !== null && ownCounterparty.id !== account.id
+
+  const txType = isInternalTransfer ? 'transfer' : parsedType
 
   // --- learn the merchant -------------------------------------------------
   let categoryId: string | null = null
@@ -195,10 +246,24 @@ export async function processStoredMessage(
     }
   }
 
-  // An ATM withdrawal moves money into the user's own cash, so it needs the
-  // Cash account as a destination rather than a category.
+  // A transfer is stored as one row: money leaves `sourceId` and lands in
+  // `counterpartyId`. Which of the two resolved accounts plays which role
+  // depends on whether this message announced the sending or the receiving.
+  let sourceId = account.id
   let counterpartyId: string | null = null
-  if (txType === 'transfer') {
+
+  if (isInternalTransfer && ownCounterparty) {
+    if (parsedType === 'income') {
+      // This is the arrival half: `account` is where the money landed.
+      sourceId = ownCounterparty.id
+      counterpartyId = account.id
+    } else {
+      sourceId = account.id
+      counterpartyId = ownCounterparty.id
+    }
+  } else if (txType === 'transfer') {
+    // An ATM withdrawal moves money into the user's own cash, so it needs the
+    // Cash account as a destination rather than a category.
     const { data: cash } = await db
       .from('accounts')
       .select('id')
@@ -227,6 +292,74 @@ export async function processStoredMessage(
 
   // --- do not double-count ------------------------------------------------
   const at = new Date(occurredAt).getTime()
+
+  // Checked first so a reprocess is idempotent: a message that already
+  // produced a transaction must never produce a second one.
+  const { data: mine } = await db
+    .from('transactions')
+    .select('id')
+    .eq('sms_message_id', messageId)
+    .eq('type', txType)
+    .limit(1)
+    .maybeSingle()
+
+  if (mine) {
+    return await finish(
+      {
+        parse_status: 'parsed',
+        matched_template_id: result.template.id,
+        parsed: fields,
+      },
+      { status: 'linked', message_id: messageId, transaction_id: mine.id },
+    )
+  }
+
+  // The sibling half of an internal transfer: the other bank announcing the
+  // same movement. Matched on the account pair in EITHER orientation, because
+  // whichever message arrives second describes the same row from the far end.
+  if (isInternalTransfer && counterpartyId) {
+    const tStart = new Date(
+      at - TRANSFER_MATCH_WINDOW_SECONDS * 1000,
+    ).toISOString()
+    const tEnd = new Date(
+      at + TRANSFER_MATCH_WINDOW_SECONDS * 1000,
+    ).toISOString()
+
+    const { data: sibling } = await db
+      .from('transactions')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('type', 'transfer')
+      .eq('amount', fields.amount)
+      .gte('occurred_at', tStart)
+      .lte('occurred_at', tEnd)
+      .or(
+        `and(account_id.eq.${sourceId},counterparty_account_id.eq.${counterpartyId}),` +
+          `and(account_id.eq.${counterpartyId},counterparty_account_id.eq.${sourceId})`,
+      )
+      .limit(1)
+      .maybeSingle()
+
+    if (sibling) {
+      return await finish(
+        {
+          parse_status: 'parsed',
+          matched_template_id: result.template.id,
+          parsed: fields,
+        },
+        {
+          status: 'linked',
+          message_id: messageId,
+          transaction_id: sibling.id,
+          type: 'transfer',
+          amount: fields.amount,
+          hint: 'the other half of a transfer already recorded',
+        },
+      )
+    }
+  }
+
+  // The same payment already entered by hand, or by a posted recurring rule.
   const windowStart = new Date(at - DEDUPE_WINDOW_SECONDS * 1000).toISOString()
   const windowEnd = new Date(at + DEDUPE_WINDOW_SECONDS * 1000).toISOString()
 
@@ -234,7 +367,7 @@ export async function processStoredMessage(
     .from('transactions')
     .select('id')
     .eq('user_id', userId)
-    .eq('account_id', account.id)
+    .eq('account_id', sourceId)
     .eq('type', txType)
     .eq('amount', fields.amount)
     .is('sms_message_id', null)
@@ -263,26 +396,6 @@ export async function processStoredMessage(
     )
   }
 
-  // A reprocess must not create a second transaction for a message that
-  // already produced one.
-  const { data: mine } = await db
-    .from('transactions')
-    .select('id')
-    .eq('sms_message_id', messageId)
-    .limit(1)
-    .maybeSingle()
-
-  if (mine) {
-    return await finish(
-      {
-        parse_status: 'parsed',
-        matched_template_id: result.template.id,
-        parsed: fields,
-      },
-      { status: 'linked', message_id: messageId, transaction_id: mine.id },
-    )
-  }
-
   // --- write the transaction ---------------------------------------------
   // A remembered merchant category means this can be filed silently. That is
   // the whole point: the inbox should only ever hold genuine unknowns.
@@ -294,7 +407,7 @@ export async function processStoredMessage(
     .from('transactions')
     .insert({
       user_id: userId,
-      account_id: account.id,
+      account_id: sourceId,
       counterparty_account_id: counterpartyId,
       type: txType,
       amount: fields.amount,
@@ -316,6 +429,35 @@ export async function processStoredMessage(
       { parse_status: 'unmatched', error: txError.message },
       { status: 'error', message_id: messageId, error: txError.message },
     )
+  }
+
+  // --- the transfer fee is real money too ---------------------------------
+  // Banks quote it inside the same message ("Fee: Rs 1.55"). Ignoring it makes
+  // the balance drift by exactly the fee every time, which then looks like a
+  // missing transaction.
+  if (fields.fee && fields.fee > 0) {
+    const { data: feeCategory } = await db
+      .from('categories')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('slug', 'bank-charges')
+      .maybeSingle()
+
+    const { error: feeError } = await db.from('transactions').insert({
+      user_id: userId,
+      account_id: sourceId,
+      type: 'expense',
+      amount: fields.fee,
+      currency: account.currency,
+      occurred_at: occurredAt,
+      category_id: feeCategory?.id ?? null,
+      note: 'Transfer fee',
+      source: 'sms',
+      status: 'cleared',
+      confidence: 0.95,
+      sms_message_id: messageId,
+    })
+    if (feeError) console.error('could not post fee:', feeError.message)
   }
 
   // --- free audit: does the bank's balance agree with ours? ---------------

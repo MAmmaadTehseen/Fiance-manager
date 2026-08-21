@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { Inbox, RefreshCw, CreditCard, MessageSquareWarning, X } from 'lucide-react'
+import { Inbox, RefreshCw, CreditCard, MessageSquareWarning } from 'lucide-react'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 import { PageHeader } from '@/components/PageHeader'
 import { EmptyState } from '@/components/EmptyState'
-import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { formatMoney } from '@/lib/money'
@@ -20,6 +19,8 @@ import {
 } from '@/hooks/useInbox'
 import type { TransactionRow } from '@/hooks/useTransactions'
 
+const CARD = 'flex flex-col gap-3.5 rounded-[22px] p-5'
+
 function ago(iso: string): string {
   try {
     return formatDistanceToNow(parseISO(iso), { addSuffix: true })
@@ -28,43 +29,62 @@ function ago(iso: string): string {
   }
 }
 
-/**
- * One transaction the pipeline captured but could not categorise. Tapping a
- * category also teaches the merchant, so this shop never asks again.
- */
+function Tag({
+  children,
+  tone = 'brand',
+}: {
+  children: React.ReactNode
+  tone?: 'brand' | 'gold'
+}) {
+  return (
+    <span
+      className={cn(
+        'rounded-full px-2.5 py-1 text-[11.5px] font-bold uppercase tracking-[0.05em]',
+        tone === 'brand' ? 'bg-brand-soft text-brand' : 'bg-gold-soft text-gold-ink',
+      )}
+    >
+      {children}
+    </span>
+  )
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-sub">{label}</span>
+      <span className="min-w-0 truncate text-right font-bold">{children}</span>
+    </div>
+  )
+}
+
+/** A captured transaction the pipeline could not categorise. */
 function ReviewCard({ tx }: { tx: TransactionRow }) {
   const categorise = useCategorise()
   const { data: categories = [] } = useCategories(
     tx.type === 'income' ? 'income' : 'expense',
   )
 
-  const title =
-    tx.merchant?.display_name ?? tx.note ?? tx.account?.name ?? 'Transaction'
-
   return (
-    <Card className="p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate font-medium">{title}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {tx.account?.name} · {ago(tx.occurred_at)}
-          </p>
-        </div>
-        <p
-          className={cn(
-            'tabular shrink-0 font-semibold',
-            tx.type === 'income' ? 'text-money-in' : 'text-foreground',
-          )}
-        >
+    <Card className={CARD}>
+      <div className="flex items-center gap-2.5">
+        <Tag tone="gold">
+          {tx.account?.name ?? 'Account'} · {ago(tx.occurred_at)}
+        </Tag>
+        <span className="tabular ml-auto font-display text-xl font-bold">
           {tx.type === 'income' ? '+' : '−'}
           {formatMoney(tx.amount, { currency: tx.currency }).replace(/^−/, '')}
-        </p>
+        </span>
       </div>
 
-      <p className="mt-3 text-xs font-medium text-muted-foreground">
-        What was this?
-      </p>
-      <div className="mt-2 flex flex-wrap gap-2">
+      <div className="flex flex-col gap-2 text-[13.5px]">
+        <Field label="Merchant">
+          {tx.merchant?.display_name ?? tx.note ?? 'Unknown'}
+        </Field>
+        <Field label="Account">{tx.account?.name ?? '—'}</Field>
+      </div>
+
+      <p className="m-0 text-[13px] font-semibold text-sub">What was this?</p>
+      <div className="flex flex-wrap gap-2">
         {categories.map((c) => (
           <button
             key={c.id}
@@ -77,7 +97,7 @@ function ReviewCard({ tx }: { tx: TransactionRow }) {
                 merchantId: tx.merchant_id,
               })
             }
-            className="rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground disabled:opacity-50"
+            className="rounded-full border border-line px-3 py-1.5 text-[13px] font-semibold text-sub transition-colors hover:border-brand hover:bg-brand hover:text-brand-on disabled:opacity-50"
           >
             {c.name}
           </button>
@@ -85,7 +105,7 @@ function ReviewCard({ tx }: { tx: TransactionRow }) {
       </div>
 
       {tx.merchant_id && (
-        <p className="mt-3 text-xs text-muted-foreground">
+        <p className="m-0 text-xs text-sub">
           Picking one teaches {tx.merchant?.display_name ?? 'this merchant'} —
           future payments file themselves.
         </p>
@@ -105,29 +125,24 @@ function UnknownCardCard({ message }: { message: OpenMessage }) {
   const amount = message.parsed?.amount
 
   return (
-    <Card className="p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="flex items-center gap-2 font-medium">
-            <CreditCard className="size-4 shrink-0 text-warning" aria-hidden />
-            Which account is •••• {last4}?
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {message.sender} · {ago(message.received_at)}
-            {amount ? ` · ${formatMoney(amount)}` : ''}
-          </p>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Dismiss"
-          onClick={() => dismiss.mutate(message.id)}
-        >
-          <X />
-        </Button>
+    <Card className={CARD}>
+      <div className="flex items-center gap-2.5">
+        <Tag>
+          {message.sender} · {ago(message.received_at)}
+        </Tag>
+        {amount != null && (
+          <span className="tabular ml-auto font-display text-xl font-bold">
+            {formatMoney(amount)}
+          </span>
+        )}
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <p className="m-0 flex items-center gap-2 text-[14.5px] font-bold">
+        <CreditCard className="size-4 shrink-0 text-gold-ink" aria-hidden />
+        Which account is •••• {last4}?
+      </p>
+
+      <div className="flex flex-wrap gap-2">
         {accounts
           .filter((a) => a.type !== 'cash')
           .map((a) => (
@@ -139,7 +154,7 @@ function UnknownCardCard({ message }: { message: OpenMessage }) {
                 await assign.mutateAsync({ accountId: a.id, last4 })
                 await reprocess.mutateAsync(undefined)
               }}
-              className="rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground disabled:opacity-50"
+              className="rounded-full border border-line px-3 py-1.5 text-[13px] font-semibold text-sub transition-colors hover:border-brand hover:bg-brand hover:text-brand-on disabled:opacity-50"
             >
               {a.name}
               {a.last4 ? ` ••${a.last4}` : ''}
@@ -147,7 +162,17 @@ function UnknownCardCard({ message }: { message: OpenMessage }) {
           ))}
       </div>
 
-      <p className="mt-3 text-xs text-muted-foreground">
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => dismiss.mutate(message.id)}
+          className="h-10 rounded-[11px] border border-line px-4 text-[13.5px] font-semibold text-sub transition hover:bg-soft"
+        >
+          Dismiss
+        </button>
+      </div>
+
+      <p className="m-0 text-xs text-sub">
         Answering once resolves this and every future message from that card.
       </p>
     </Card>
@@ -160,39 +185,37 @@ function UnreadableCard({ message }: { message: OpenMessage }) {
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <Card className="p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="flex items-center gap-2 font-medium">
-            <MessageSquareWarning
-              className="size-4 shrink-0 text-muted-foreground"
-              aria-hidden
-            />
-            Couldn&rsquo;t read this one
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {message.sender} · {ago(message.received_at)}
-          </p>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Dismiss"
-          onClick={() => dismiss.mutate(message.id)}
-        >
-          <X />
-        </Button>
+    <Card className={CARD}>
+      <div className="flex items-center gap-2.5">
+        <Tag>
+          {message.sender} · {ago(message.received_at)}
+        </Tag>
       </div>
+
+      <p className="m-0 flex items-center gap-2 text-[14.5px] font-bold">
+        <MessageSquareWarning className="size-4 shrink-0 text-sub" aria-hidden />
+        Couldn&rsquo;t read this one
+      </p>
 
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="mt-3 w-full rounded-lg bg-muted p-3 text-left text-xs text-muted-foreground"
+        className="rounded-xl bg-soft px-3.5 py-3 text-left font-mono text-[13px] leading-[1.55] text-sub"
       >
-        <span className={expanded ? '' : 'line-clamp-2'}>{message.body}</span>
+        <span className={expanded ? '' : 'line-clamp-3'}>{message.body}</span>
       </button>
 
-      <p className="mt-3 text-xs text-muted-foreground">
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => dismiss.mutate(message.id)}
+          className="h-10 rounded-[11px] border border-line px-4 text-[13.5px] font-semibold text-sub transition hover:bg-soft"
+        >
+          Dismiss
+        </button>
+      </div>
+
+      <p className="m-0 text-xs text-sub">
         It&rsquo;s saved. Add a rule in Settings and it will be picked up.
       </p>
     </Card>
@@ -210,37 +233,38 @@ export function InboxPage() {
   const loading = loadingReview || loadingMessages
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <PageHeader
         title="Inbox"
-        subtitle={
-          total > 0
-            ? 'Only things the app genuinely could not work out.'
-            : undefined
-        }
+        subtitle="Bank SMS your phone forwarded — confirm and they join the ledger."
         action={
           messages.length > 0 ? (
-            <Button
-              size="sm"
-              variant="outline"
+            <button
+              type="button"
               disabled={reprocess.isPending}
               onClick={() => reprocess.mutate(undefined)}
+              className="flex h-[42px] items-center gap-2 rounded-xl border border-line bg-card px-[18px] text-sm font-bold text-ink transition hover:bg-soft"
             >
-              <RefreshCw className={cn(reprocess.isPending && 'animate-spin')} />
+              <RefreshCw
+                className={cn('size-4', reprocess.isPending && 'animate-spin')}
+                aria-hidden
+              />
               Retry
-            </Button>
+            </button>
           ) : undefined
         }
       />
 
       {!loading && total === 0 ? (
-        <EmptyState
-          icon={Inbox}
-          title="Nothing needs you"
-          description="Every message so far has been filed on its own. This is what it should look like most days."
-        />
+        <Card>
+          <EmptyState
+            icon={Inbox}
+            title="Nothing needs you"
+            description="Every message so far has been filed on its own. This is what it should look like most days."
+          />
+        </Card>
       ) : (
-        <div className="flex flex-col gap-3 px-4 md:px-0">
+        <div className="grid items-start gap-[clamp(14px,2vw,20px)] [grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr))]">
           {needsAccount.map((m) => (
             <UnknownCardCard key={m.id} message={m} />
           ))}

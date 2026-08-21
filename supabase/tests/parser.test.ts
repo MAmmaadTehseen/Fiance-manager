@@ -177,6 +177,127 @@ for (const [label, sender, body] of [
   else no(`${label} produced a transaction`, r.fields)
 }
 
+console.log('== real Pakistani IBFT/RAAST formats ==')
+// Captured from a live phone, then redacted: names and account numbers are
+// replaced but every character of structure is preserved. Real identifiers
+// must not live in the repo; the shapes are what the parser cares about.
+//
+// The shipped templates matched NONE of these, because every one puts the
+// amount before the verb. These cases exist so that cannot regress.
+const REAL: Array<{
+  label: string
+  body: string
+  kind: string
+  amount: number
+  /** The user's own account. Null when the message never names it. */
+  last4: string | null
+  /** The other side. Set only where the message identifies it. */
+  counterparty?: string | null
+  fee?: number | null
+}> = [
+  {
+    // The only account here is the RECIPIENT's, so `last4` must stay null and
+    // the source gets resolved from the sending bank instead. Booking this
+    // against 0123 would debit the account the money arrived in.
+    label: 'Meezan IBFT out (amount first, fee in the same message)',
+    body: 'Rs 1.00 sent to AHMED KHAN, A/C:  12520110590123 on 21/08/2026 at 00:39:08. Fee: Rs 1.55,  TID:721344000001 via IBFT',
+    kind: 'purchase',
+    amount: 1,
+    last4: null,
+    counterparty: '0123',
+    fee: 1.55,
+  },
+  {
+    label: 'UBL IBFT in ("in your UBL A/C")',
+    body: 'PKR 1 received from AHMED K* in your UBL A/C *4444 on 21-AUG-2026 00:39 via IBFT. Tx ID 7014000001. For info: 111825888.',
+    kind: 'credit',
+    amount: 1,
+    last4: '4444',
+  },
+  {
+    label: 'Faysal RAAST in (two accounts named; ours is the one after "in")',
+    body: 'PKR 1.00 received from AHMED K* UBL A/C *4444 via RAAST in FBL A/C *5555 on 21-Aug-26 at 12:40 AM Ref # 270040000001',
+    kind: 'credit',
+    amount: 1,
+    last4: '5555',
+  },
+  {
+    label: 'JazzCash RAAST in (wallet number, double space)',
+    body: 'Rs 1.00 received   in your JazzCash Mobile Account:03001234567 via Raast. TID: 721344000002',
+    kind: 'credit',
+    amount: 1,
+    last4: '4567',
+  },
+  {
+    label: 'UBL IBFT in, large amount with grouping',
+    body: 'PKR 50,000 received from AHMED K* in your UBL A/C *4444 on 21-MAY-2026 18:33 via IBFT. Tx ID 6622000001. For info: 111825888.',
+    kind: 'credit',
+    amount: 50000,
+    last4: '4444',
+  },
+  {
+    label: 'RAAST in, "Dear Customer" prefix, account after "from"',
+    body: 'Dear Customer, PKR 48 received from ANK:CDC A/C 4444 FOR CD-NATF-D-41 on 21-MAY-2026 11:26 via RAAST for TX ID 6619000001.',
+    kind: 'credit',
+    amount: 48,
+    last4: '4444',
+  },
+]
+
+for (const c of REAL) {
+  const r = parseSms('BANKALERT', c.body, templates)
+  if (!r.matched) {
+    no(`${c.label}: no template matched`, c.body.slice(0, 70))
+    continue
+  }
+  if (r.kind !== c.kind) {
+    no(`${c.label}: kind`, { expected: c.kind, actual: r.kind })
+    continue
+  }
+  if (r.fields.amount !== c.amount) {
+    no(`${c.label}: amount`, { expected: c.amount, actual: r.fields.amount })
+    continue
+  }
+  // `last4` is asserted even when it is expected to be null. Skipping the
+  // null case would silently excuse the exact bug this suite exists to catch:
+  // an outgoing transfer booked against the RECIPIENT's account number.
+  if (r.fields.last4 !== c.last4) {
+    no(`${c.label}: account`, { expected: c.last4, actual: r.fields.last4 })
+    continue
+  }
+  if (
+    c.counterparty !== undefined &&
+    r.fields.counterpartyLast4 !== c.counterparty
+  ) {
+    no(`${c.label}: counterparty`, {
+      expected: c.counterparty,
+      actual: r.fields.counterpartyLast4,
+    })
+    continue
+  }
+  if (c.fee !== undefined && r.fields.fee !== c.fee) {
+    no(`${c.label}: fee`, { expected: c.fee, actual: r.fields.fee })
+    continue
+  }
+  ok(
+    `${c.label} -> ${r.kind} ${r.fields.amount} ours=${r.fields.last4} theirs=${r.fields.counterpartyLast4}`,
+  )
+}
+
+console.log('== the fee in a transfer message is not the amount ==')
+{
+  const r = parseSms(
+    'BANKALERT',
+    'Rs 5,000.00 sent to AHMED KHAN, A/C:  12520110590123 on 21/08/2026 at 00:39:08. Fee: Rs 1.55,  TID:721344000001 via IBFT',
+    templates,
+  )
+  if (r.matched && r.fields.amount === 5000) {
+    ok('reads 5000, not the 1.55 fee')
+  } else {
+    no('fee was mistaken for the amount', r.matched ? r.fields : 'no match')
+  }
+}
+
 console.log('== unknown senders fall through cleanly ==')
 const junk = parseSms('MOM', 'are you coming home for dinner?', templates)
 eq(junk.matched, false, 'a personal message matches nothing')
