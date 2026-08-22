@@ -13,7 +13,8 @@ import { useTheme } from '@/lib/theme'
 
 // Updated on each release. The app compares its version against
 // public/app-version.json and links here when a new build exists.
-const ANDROID_BUILD_URL = 'https://expo.dev/accounts/mammaadtehseen/projects/batwa/builds'
+const ANDROID_BUILD_URL =
+  'https://expo.dev/artifacts/eas/-rqa2bf63QiD_FlYyM-dmhMhSZBYVpTXLU9CJXUDwjo.apk'
 
 const STEPS = [
   {

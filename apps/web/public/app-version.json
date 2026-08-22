@@ -3,6 +3,6 @@
   "android": {
     "version": "0.1.0",
     "url": "https://batwa.online/download",
-    "notes": "First build: automatic bank SMS capture."
+    "notes": "First release: automatic bank SMS capture with an offline retry queue."
   }
 }
