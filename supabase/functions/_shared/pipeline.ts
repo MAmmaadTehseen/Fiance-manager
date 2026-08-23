@@ -298,13 +298,52 @@ export async function processStoredMessage(
   // --- do not double-count ------------------------------------------------
   const at = new Date(occurredAt).getTime()
 
+  // Telco redelivery, or the SMS path and the notification path both seeing
+  // one message: the server-side body_hash fingerprint buckets received_at to
+  // the minute, so a copy arriving in a different minute inserts as a fresh
+  // sms_messages row and none of the checks below can see the first copy's
+  // transaction. Catch it here: another already-parsed message with the same
+  // sender and body inside the transfer window is the same real-world event.
+  {
+    const rStart = new Date(at - TRANSFER_MATCH_WINDOW_SECONDS * 1000).toISOString()
+    const rEnd = new Date(at + TRANSFER_MATCH_WINDOW_SECONDS * 1000).toISOString()
+    const { data: earlierCopy } = await db
+      .from('sms_messages')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('sender', message.sender)
+      .eq('body', message.body)
+      .eq('parse_status', 'parsed')
+      .neq('id', messageId)
+      .gte('received_at', rStart)
+      .lte('received_at', rEnd)
+      .limit(1)
+      .maybeSingle()
+
+    if (earlierCopy) {
+      return await finish(
+        { parse_status: 'duplicate', matched_template_id: result.template.id },
+        {
+          status: 'linked',
+          message_id: messageId,
+          hint: 'a copy of this message was already processed',
+        },
+      )
+    }
+  }
+
   // Checked first so a reprocess is idempotent: a message that already
-  // produced a transaction must never produce a second one.
+  // produced OR linked into a transaction must never produce a second one.
+  // Deliberately type-agnostic: if a template edit changes the computed kind
+  // between runs (expense yesterday, transfer today), filtering on type would
+  // miss the existing row and insert alongside it -- and re-post the fee too.
+  // Ordered by created_at so the main transaction wins over its fee row.
   const { data: mine } = await db
     .from('transactions')
     .select('id')
-    .eq('sms_message_id', messageId)
-    .eq('type', txType)
+    .eq('user_id', userId)
+    .or(`sms_message_id.eq.${messageId},sms_message_id_2.eq.${messageId}`)
+    .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle()
 
@@ -330,22 +369,55 @@ export async function processStoredMessage(
       at + TRANSFER_MATCH_WINDOW_SECONDS * 1000,
     ).toISOString()
 
-    const { data: sibling } = await db
+    // Only transfers whose second slot is still empty are candidates: a
+    // transfer that already absorbed its opposite leg is complete, and a
+    // third equal-amount message is a genuinely separate movement that must
+    // become its own row -- splitting a payment under a per-transaction limit
+    // produces exactly this shape.
+    const { data: candidates } = await db
       .from('transactions')
-      .select('id')
+      .select('id, sms_message_id')
       .eq('user_id', userId)
       .eq('type', 'transfer')
       .eq('amount', fields.amount)
+      .is('sms_message_id_2', null)
       .gte('occurred_at', tStart)
       .lte('occurred_at', tEnd)
       .or(
         `and(account_id.eq.${sourceId},counterparty_account_id.eq.${counterpartyId}),` +
           `and(account_id.eq.${counterpartyId},counterparty_account_id.eq.${sourceId})`,
       )
-      .limit(1)
-      .maybeSingle()
+      .order('occurred_at', { ascending: true })
+      .limit(5)
+
+    // The two legs of one transfer come from two different banks, so their
+    // sender ids differ. A candidate created by a message from the SAME
+    // sender is the same bank announcing a SECOND movement -- fall through
+    // and book it separately rather than merging two real transfers.
+    let sibling: { id: string } | null = null
+    for (const candidate of candidates ?? []) {
+      if (!candidate.sms_message_id) {
+        sibling = candidate
+        break
+      }
+      const { data: creator } = await db
+        .from('sms_messages')
+        .select('sender')
+        .eq('id', candidate.sms_message_id)
+        .maybeSingle()
+      if (creator && creator.sender !== message.sender) {
+        sibling = candidate
+        break
+      }
+    }
 
     if (sibling) {
+      // Record this message as the second leg, so the row is complete and a
+      // reprocess of either message finds it via the mine check above.
+      await db
+        .from('transactions')
+        .update({ sms_message_id_2: messageId })
+        .eq('id', sibling.id)
       return await finish(
         {
           parse_status: 'parsed',

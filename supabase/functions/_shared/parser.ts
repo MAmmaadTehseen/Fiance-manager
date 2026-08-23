@@ -179,17 +179,29 @@ export function parseDateTime(raw: string | undefined): Date | null {
   const s = raw.trim()
 
   const time = s.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i)
-  let hh = 0
-  let mm = 0
-  let ss = 0
-  if (time) {
-    hh = Number(time[1])
-    mm = Number(time[2])
-    ss = time[3] ? Number(time[3]) : 0
-    const mer = time[4]?.toUpperCase()
-    if (mer === 'PM' && hh < 12) hh += 12
-    if (mer === 'AM' && hh === 12) hh = 0
-  }
+
+  // No time component means the best this string can tell us is a DATE — and
+  // the caller already has received_at, accurate to seconds. Returning a
+  // midnight guess instead was corrupting the transfer-sibling and dedupe
+  // windows: two halves of one transfer landed up to 24h apart and were
+  // booked twice. Date-only input is therefore worth nothing here.
+  if (!time) return null
+
+  let hh = Number(time[1])
+  const mm = Number(time[2])
+  const ss = time[3] ? Number(time[3]) : 0
+  const mer = time[4]?.toUpperCase()
+  if (mer === 'PM' && hh < 12) hh += 12
+  if (mer === 'AM' && hh === 12) hh = 0
+
+  // Pakistani bank SMS quote wall-clock PKT (UTC+5), but this code runs in
+  // whatever timezone the host happens to use — UTC on Supabase Edge, PKT on
+  // a dev laptop. `new Date(y, m, d, ...)` would give different instants on
+  // each. Build the instant explicitly: PKT wall time minus the fixed offset.
+  // (PKT has no daylight saving, so a constant is correct.)
+  const PKT_OFFSET_MS = 5 * 60 * 60 * 1000
+  const fromParts = (year: number, month: number, day: number): Date =>
+    new Date(Date.UTC(year, month, day, hh, mm, ss) - PKT_OFFSET_MS)
 
   // 12-Aug-25 / 12 Aug 2025
   const named = s.match(/(\d{1,2})[-\s/]([A-Za-z]{3})[a-z]*[-\s/](\d{2,4})/)
@@ -198,14 +210,14 @@ export function parseDateTime(raw: string | undefined): Date | null {
     if (month !== undefined) {
       let year = Number(named[3])
       if (year < 100) year += 2000
-      return new Date(year, month, Number(named[1]), hh, mm, ss)
+      return fromParts(year, month, Number(named[1]))
     }
   }
 
   // 2025-08-12
   const iso = s.match(/(\d{4})-(\d{2})-(\d{2})/)
   if (iso) {
-    return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]), hh, mm, ss)
+    return fromParts(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]))
   }
 
   // 12/08/2025 — day first, which is the convention in PK.
@@ -216,7 +228,7 @@ export function parseDateTime(raw: string | undefined): Date | null {
     const day = Number(numeric[1])
     const month = Number(numeric[2]) - 1
     if (month >= 0 && month <= 11 && day >= 1 && day <= 31) {
-      return new Date(year, month, day, hh, mm, ss)
+      return fromParts(year, month, day)
     }
   }
 
@@ -288,7 +300,12 @@ export function normalizeLast4(raw: string | null): string | null {
   if (!raw) return null
   const digits = raw.replace(/\D/g, '')
   if (digits.length < 3) return null
-  return digits.length > 6 ? digits.slice(-4) : digits
+  // Always the final four. Banks quote the same account as *7432, *017432 or
+  // a full 14-digit tail depending on message type; keeping 5-6 digit quotes
+  // verbatim made one account ping-pong between formats -- the inbox answer
+  // overwrote last4 with the long form, and the short-form messages stopped
+  // resolving. Four digits is the one representation every format reaches.
+  return digits.length > 4 ? digits.slice(-4) : digits
 }
 
 const EMPTY_FIELDS: ParsedFields = {
@@ -301,6 +318,29 @@ const EMPTY_FIELDS: ParsedFields = {
   fee: null,
   occurredAt: null,
   reference: null,
+}
+
+/**
+ * Undo an over-eager "\bon\b" merchant terminator. If the message reads
+ * "<name> on 21-Aug-25", the name is everything up to the dated "on", even
+ * when "on" also appears inside the name. Returns the widest merchant that
+ * still ends before a date.
+ */
+function reextendMerchant(
+  captured: string | null,
+  pattern: string | string[] | undefined,
+  text: string,
+): string | null {
+  if (!captured || !pattern) return captured
+  // Find "<stuff> on <date>" starting where the captured value begins.
+  const idx = text.indexOf(captured)
+  if (idx < 0) return captured
+  const rest = text.slice(idx)
+  const m = rest.match(
+    /^(.+?)\s+on\s+\d{1,2}[-/\s](?:[A-Za-z]{3}|\d{1,2})[-/\s]\d{2,4}/i,
+  )
+  if (m && m[1] && m[1].length > captured.length) return m[1].trim()
+  return captured
 }
 
 export function parseSms(
@@ -329,7 +369,13 @@ export function parseSms(
     // later template may match the same message properly.
     if (amount === null) continue
 
-    const merchantRaw = extractField(f.merchant, text)
+    const merchantRawUncut = extractField(f.merchant, text)
+    // A template may have stopped the merchant capture early at the word "on"
+    // (\bon\b terminator) mid-name — "Books on Wheels" -> "Books". If the
+    // full text continues "<merchant> on <date>", the merchant is everything
+    // before that dated "on", so re-extend it. Only a dated "on" is a real
+    // boundary; "on" inside a name never is.
+    const merchantRaw = reextendMerchant(merchantRawUncut, f.merchant, text)
     const when = parseDateTime(extractField(f.datetime, text) ?? undefined)
 
     return {

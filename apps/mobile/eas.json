@@ -1,32 +1,40 @@
 {
-  "cli": { "version": ">= 12.0.0", "appVersionSource": "remote" },
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
+  },
   "build": {
-    "development": {
-      "developmentClient": true,
-      "distribution": "internal",
-      "android": { "buildType": "apk" },
+    "base": {
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://byjytsoeayopmcaabgyj.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_3Ylq92PI0XTePhNgiZWy4Q_-UFd8T0r"
+      }
+    },
+    "development": {
+      "extends": "base",
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
       }
     },
     "preview": {
+      "extends": "base",
       "distribution": "internal",
       "channel": "preview",
-      "android": { "buildType": "apk" },
-      "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://byjytsoeayopmcaabgyj.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_3Ylq92PI0XTePhNgiZWy4Q_-UFd8T0r"
+      "android": {
+        "buildType": "apk"
       }
     },
     "production": {
+      "extends": "base",
       "channel": "production",
-      "android": { "buildType": "app-bundle" },
-      "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://byjytsoeayopmcaabgyj.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_3Ylq92PI0XTePhNgiZWy4Q_-UFd8T0r"
+      "android": {
+        "buildType": "app-bundle"
       }
     }
   },
-  "submit": { "production": {} }
+  "submit": {
+    "production": {}
+  }
 }

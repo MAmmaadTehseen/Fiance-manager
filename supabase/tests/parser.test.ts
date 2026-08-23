@@ -13,6 +13,7 @@ import {
   parseAmount,
   parseDateTime,
   normalizeMerchant,
+  normalizeLast4,
   displayMerchant,
   kindToTransactionType,
   type ParserTemplate,
@@ -73,12 +74,30 @@ eq(displayMerchant('CAFE ZOUK'), 'Cafe Zouk', 'title-cases for display')
 eq(displayMerchant('KFC'), 'KFC', 'leaves short acronyms alone')
 
 console.log('== unit: date parsing ==')
-eq(parseDateTime('12-Aug-25')?.getFullYear(), 2025, '2-digit year -> 2025')
-eq(parseDateTime('12-Aug-25')?.getMonth(), 7, 'named month')
-eq(parseDateTime('12/08/2025')?.getDate(), 12, 'day-first numeric')
-eq(parseDateTime('2025-08-12')?.getDate(), 12, 'iso')
-eq(parseDateTime('12-Aug-25 14:30')?.getHours(), 14, 'time of day')
-eq(parseDateTime('12-Aug-25 02:30 PM')?.getHours(), 14, 'meridiem')
+// A date with no time is worthless here: the caller already has received_at
+// to the second, and a midnight guess corrupted the transfer/dedupe windows.
+// So date-only -> null, and a timed string is an exact PKT->UTC instant.
+eq(parseDateTime('12-Aug-25'), null, 'date without a time -> null')
+eq(parseDateTime('12/08/2025'), null, 'numeric date without a time -> null')
+eq(parseDateTime('2025-08-12'), null, 'iso date without a time -> null')
+// 14:30 PKT on 12-Aug-2025 == 09:30 UTC. Verify the whole instant, since the
+// point of the fix is that it no longer depends on the host timezone.
+eq(
+  parseDateTime('12-Aug-25 14:30')?.toISOString(),
+  '2025-08-12T09:30:00.000Z',
+  'named month, PKT 14:30 -> UTC 09:30',
+)
+eq(
+  parseDateTime('12/08/2025 14:30')?.toISOString(),
+  '2025-08-12T09:30:00.000Z',
+  'day-first numeric with a time',
+)
+eq(
+  parseDateTime('2025-08-12 14:30')?.toISOString(),
+  '2025-08-12T09:30:00.000Z',
+  'iso with a time',
+)
+eq(parseDateTime('12-Aug-25 02:30 PM')?.getUTCHours(), 9, 'meridiem: 2:30pm PKT -> 09 UTC')
 eq(parseDateTime('not a date'), null, 'unparseable is null')
 
 console.log('== every seeded template parses its own sample ==')
@@ -323,6 +342,64 @@ console.log('== the fee in a transfer message is not the amount ==')
   } else {
     no('fee was mistaken for the amount', r.matched ? r.fields : 'no match')
   }
+}
+
+console.log('== last4 always converges on the final four (routing) ==')
+eq(normalizeLast4('*017432'), '7432', 'six-digit quote -> last four')
+eq(normalizeLast4('12520110590508'), '0508', '14-digit tail -> last four')
+eq(normalizeLast4('03001234567'), '4567', 'wallet number -> last four')
+
+console.log('== reversals book as a credit, not ignored ==')
+{
+  const r = parseSms(
+    'HBL',
+    'Your transaction has been reversed. PKR 5,000.00 credited to your account ending 4821. Ref # 990011223',
+    templates,
+  )
+  if (r.matched && r.kind === 'credit' && r.fields.amount === 5000)
+    ok('reversal -> credit 5000')
+  else no('reversal not booked as a credit', r.matched ? r.fields : 'no match')
+}
+
+console.log('== a real bundle purchase is NOT swallowed by the promo rule ==')
+{
+  const r = parseSms(
+    'Jazz',
+    'You have subscribed to Weekly Internet. Rs 120 deducted. Enjoy 5GB internet.',
+    templates,
+  )
+  // It must NOT be ignored; either it books, or it lands unmatched for review.
+  if (r.matched && r.kind === 'ignore')
+    no('real bundle purchase was ignored', r.template.label)
+  else ok('bundle purchase is not silently ignored')
+}
+
+console.log('== a bank cashback advert does NOT become a phantom expense ==')
+{
+  const r = parseSms(
+    'HBL',
+    'Ramzan Bachat! Har card purchase per Rs 50 cashback. Min purchase Rs 500 tak.',
+    templates,
+  )
+  if (r.matched && r.kind !== 'ignore')
+    no('cashback advert parsed as a real transaction', {
+      kind: r.kind,
+      amount: r.fields.amount,
+    })
+  else ok('cashback advert is ignored, not booked')
+}
+
+console.log('== a merchant containing "on" survives a dated terminator ==')
+{
+  const r = parseSms(
+    'FBL',
+    'PKR 330.87 Debit Card purchase at Books on Wheels on 21/AUG/2026 at 01:38:55 PM',
+    templates,
+  )
+  if (r.matched && r.fields.merchantKey === 'BOOKS ON WHEELS')
+    ok('Books on Wheels not truncated to Books')
+  else
+    no('merchant truncated at the word "on"', r.matched ? r.fields.merchant : 'no match')
 }
 
 console.log('== unknown senders fall through cleanly ==')

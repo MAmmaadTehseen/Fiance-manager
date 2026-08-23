@@ -29,10 +29,16 @@ class BatwaCaptureModule : Module() {
          * in and minted a token — which is why the user never copies one by
          * hand the way the MacroDroid setup required.
          */
-        Function("configure") { token: String, endpoint: String ->
-            CaptureStore.setConfig(context, token, endpoint)
+        Function("configure") { token: String, endpoint: String, tokenHash: String ->
+            CaptureStore.setConfig(context, token, endpoint, tokenHash)
             // Anything captured before setup completed can go out now.
             UploadWorker.schedule(context)
+        }
+
+        // The stored token's hash, so the app can revoke the exact server-side
+        // credential on disconnect without holding the raw token in JS.
+        Function("tokenHash") {
+            CaptureStore.tokenHash(context)
         }
 
         Function("disconnect") {

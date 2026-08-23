@@ -15,6 +15,10 @@ import java.io.BufferedReader
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 
 /**
@@ -22,6 +26,19 @@ import java.util.concurrent.TimeUnit
  *
  * Scheduled by WorkManager, so it runs when the network comes back rather
  * than only while the app is open, and survives both process death and reboot.
+ *
+ * Outcome discipline matters more than anything else here:
+ *  - ACCEPTED        server took it -> remove from queue, count as sent.
+ *  - REJECTED        server understood and refused THIS message (bad body,
+ *                    too large) -> remove so it cannot block the queue, but
+ *                    never count it as sent.
+ *  - AUTH_FAILED     the credential is dead, not the message. Every message
+ *                    would fail identically, so STOP, keep the entire queue,
+ *                    and surface the error. Draining the queue into a revoked
+ *                    token would permanently destroy real transactions while
+ *                    the UI reported success.
+ *  - RETRY           network or server trouble -> keep everything from here
+ *                    on, back off, try again.
  */
 class UploadWorker(
     context: Context,
@@ -33,39 +50,58 @@ class UploadWorker(
         val token = CaptureStore.token(ctx)
         val endpoint = CaptureStore.endpoint(ctx)
 
-        // Not configured yet: keep the messages, do not retry in a loop. The
-        // app enqueues work again as soon as a token is stored.
+        // Not configured yet: keep the messages, do not spin. The app
+        // enqueues work again the moment a token is stored.
         if (token.isNullOrBlank() || endpoint.isNullOrBlank()) return@withContext Result.success()
 
         val pending = CaptureStore.peekAll(ctx)
         if (pending.isEmpty()) return@withContext Result.success()
 
-        var accepted = 0
+        var processed = 0 // rows to drop from the head of the queue
+        var sent = 0      // rows the server actually accepted
+
         for (message in pending) {
             when (send(endpoint, token, message)) {
-                SendOutcome.ACCEPTED -> accepted++
+                SendOutcome.ACCEPTED -> {
+                    processed++
+                    sent++
+                }
                 SendOutcome.REJECTED -> {
-                    // The server understood us and refused — a revoked token,
-                    // or a malformed body. Retrying cannot help, and leaving it
-                    // at the head of the queue would block every message behind
-                    // it forever, so drop it and move on.
-                    accepted++
+                    // Dropped but NOT counted as sent, and the recorded error
+                    // is left standing so the user can see something was
+                    // refused.
+                    processed++
+                }
+                SendOutcome.AUTH_FAILED -> {
+                    if (processed > 0) CaptureStore.drop(ctx, processed)
+                    if (sent > 0) CaptureStore.recordSent(ctx, sent)
+                    CaptureStore.recordError(
+                        ctx,
+                        "This phone's key was revoked. Re-connect in the app — " +
+                            "your messages are kept and will send after that.",
+                    )
+                    // Not retry(): retrying cannot succeed until the user
+                    // reconnects, and configure() schedules a fresh drain.
+                    return@withContext Result.success()
                 }
                 SendOutcome.RETRY -> {
-                    // Network or server-side failure. Everything from here on
-                    // stays queued, in order.
-                    if (accepted > 0) CaptureStore.drop(ctx, accepted)
+                    if (processed > 0) CaptureStore.drop(ctx, processed)
+                    if (sent > 0) CaptureStore.recordSent(ctx, sent)
                     return@withContext Result.retry()
                 }
             }
         }
 
-        CaptureStore.drop(ctx, accepted)
-        CaptureStore.recordSent(ctx, accepted)
+        CaptureStore.drop(ctx, processed)
+        if (sent > 0) CaptureStore.recordSent(ctx, sent)
         Result.success()
     }
 
-    private enum class SendOutcome { ACCEPTED, REJECTED, RETRY }
+    private enum class SendOutcome { ACCEPTED, REJECTED, AUTH_FAILED, RETRY }
+
+    private val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+    }
 
     private fun send(endpoint: String, token: String, message: QueuedMessage): SendOutcome {
         var connection: HttpURLConnection? = null
@@ -86,7 +122,7 @@ class UploadWorker(
             val payload = buildString {
                 append("sender=").append(encode(message.sender))
                 append("&body=").append(encode(message.body))
-                append("&received_at=").append(encode(iso8601(message.receivedAt)))
+                append("&received_at=").append(encode(isoFormat.format(Date(message.receivedAt))))
                 append("&device=").append(encode("batwa-android"))
             }
 
@@ -94,12 +130,14 @@ class UploadWorker(
 
             when (val code = connection.responseCode) {
                 in 200..299 -> SendOutcome.ACCEPTED
-                // 401 revoked token, 400 unreadable body, 413 too large.
-                // All permanent; retrying just blocks the queue.
-                401, 400, 413, 403, 422 -> {
+                // The credential is dead, not the message.
+                401, 403 -> SendOutcome.AUTH_FAILED
+                // This message is malformed or oversized; retrying cannot
+                // help, and leaving it at the head blocks everything behind.
+                400, 413, 422 -> {
                     CaptureStore.recordError(
                         applicationContext,
-                        "Server refused a message (HTTP $code). Re-connect this phone in Settings.",
+                        "The server refused one message (HTTP $code); it was skipped.",
                     )
                     SendOutcome.REJECTED
                 }
@@ -129,21 +167,19 @@ class UploadWorker(
 
     private fun encode(value: String): String = URLEncoder.encode(value, "UTF-8")
 
-    private fun iso8601(millis: Long): String {
-        val format = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
-        format.timeZone = java.util.TimeZone.getTimeZone("UTC")
-        return format.format(java.util.Date(millis))
-    }
-
     companion object {
         private const val WORK_NAME = "batwa-upload"
 
         /**
-         * Queues a drain. KEEP rather than REPLACE so a burst of messages does
-         * not keep cancelling and restarting the same job — each enqueue
-         * already persisted its message, and one run drains all of them.
+         * One builder for both entry points, differing only in policy. The
+         * previous pair of near-identical builders had already drifted: the
+         * manual path lost the backoff criteria.
+         *
+         * KEEP for the automatic path so a burst of messages does not keep
+         * cancelling and restarting one job; REPLACE for the user's explicit
+         * "send now", which should not wait behind a backed-off retry.
          */
-        fun schedule(context: Context) {
+        private fun enqueue(context: Context, policy: ExistingWorkPolicy) {
             val request = OneTimeWorkRequestBuilder<UploadWorker>()
                 .setConstraints(
                     Constraints.Builder()
@@ -154,21 +190,11 @@ class UploadWorker(
                 .build()
 
             WorkManager.getInstance(context)
-                .enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.KEEP, request)
+                .enqueueUniqueWork(WORK_NAME, policy, request)
         }
 
-        /** Used by the app's "send now" control, which should not wait. */
-        fun scheduleNow(context: Context) {
-            val request = OneTimeWorkRequestBuilder<UploadWorker>()
-                .setConstraints(
-                    Constraints.Builder()
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
-                        .build(),
-                )
-                .build()
+        fun schedule(context: Context) = enqueue(context, ExistingWorkPolicy.KEEP)
 
-            WorkManager.getInstance(context)
-                .enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, request)
-        }
+        fun scheduleNow(context: Context) = enqueue(context, ExistingWorkPolicy.REPLACE)
     }
 }

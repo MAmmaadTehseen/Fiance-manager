@@ -25,6 +25,7 @@ data class QueuedMessage(val sender: String, val body: String, val receivedAt: L
 object CaptureStore {
     private const val PREFS = "batwa_capture"
     private const val KEY_TOKEN = "ingest_token"
+    private const val KEY_TOKEN_HASH = "ingest_token_hash"
     private const val KEY_ENDPOINT = "ingest_endpoint"
     private const val KEY_QUEUE = "pending"
     private const val KEY_SENT = "sent_count"
@@ -51,7 +52,13 @@ object CaptureStore {
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
             )
         } catch (t: Throwable) {
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            // A DIFFERENT file for the fallback. Writing plaintext keys into
+            // the encrypted store's own file split-brains it: once the
+            // keystore recovers, the encrypted view cannot see the plaintext
+            // entries, and mixing foreign keys in can corrupt the file
+            // outright. Separate files mean a fallback window loses
+            // encryption, never data.
+            context.getSharedPreferences(PREFS + "_plain", Context.MODE_PRIVATE)
         }
         cached = resolved
         return resolved
@@ -59,17 +66,21 @@ object CaptureStore {
 
     // --------------------------------------------------------------- config
 
-    fun setConfig(context: Context, token: String, endpoint: String) {
+    fun setConfig(context: Context, token: String, endpoint: String, tokenHash: String) {
         prefs(context).edit()
             .putString(KEY_TOKEN, token)
             .putString(KEY_ENDPOINT, endpoint)
+            .putString(KEY_TOKEN_HASH, tokenHash)
             .commit()
     }
+
+    fun tokenHash(context: Context): String? = prefs(context).getString(KEY_TOKEN_HASH, null)
 
     fun clearConfig(context: Context) {
         prefs(context).edit()
             .remove(KEY_TOKEN)
             .remove(KEY_ENDPOINT)
+            .remove(KEY_TOKEN_HASH)
             .commit()
     }
 
@@ -122,7 +133,12 @@ object CaptureStore {
             }
         }
 
-        if (queue.length() >= MAX_QUEUED) return
+        // Evict the OLDEST when full. The message most worth keeping is the
+        // one that just arrived; silently discarding it while stale entries
+        // keep their slots is precisely backwards.
+        while (queue.length() >= MAX_QUEUED) {
+            queue.remove(0)
+        }
 
         queue.put(
             JSONObject()

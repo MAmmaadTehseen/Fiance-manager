@@ -39,6 +39,11 @@ class SmsReceiver : BroadcastReceiver() {
 
         if (body.isBlank()) return
 
+        // Before the user has connected there is no token and no consent —
+        // holding their personal SMS in a queue on the off-chance they sign
+        // up later is a liability, not a feature.
+        if (!CaptureStore.isConfigured(context)) return
+
         CaptureStore.enqueue(context, sender, body, receivedAt)
         UploadWorker.schedule(context)
     }

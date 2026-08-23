@@ -16,5 +16,8 @@ docker exec -i "$DB_CONTAINER" psql -U postgres -d postgres -t -A -c \
      from (select id, user_id, bank_key, label, sender_pattern, match_pattern,
                   field_patterns, kind, priority, sample
              from public.parser_templates
-            where enabled) t" \
+            -- Built-ins only. User templates (from the ingest e2e test, or a
+            -- real user) need no documented sample, so including them would
+            -- make this suite's result depend on DB state left by other tests.
+            where enabled and user_id is null) t" \
   | node --experimental-strip-types "$HERE/parser.test.ts"

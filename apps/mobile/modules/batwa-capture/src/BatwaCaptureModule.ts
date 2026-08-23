@@ -4,7 +4,9 @@ import type { CaptureStatus } from './BatwaCapture.types'
 
 declare class BatwaCaptureModule extends NativeModule {
   /** Store the ingest credential. Called once, after sign-in. */
-  configure(token: string, endpoint: string): void
+  configure(token: string, endpoint: string, tokenHash: string): void
+  /** The stored token's SHA-256 hash, for revoking on disconnect. */
+  tokenHash(): string | null
   /** Forget the credential. Queued messages are kept. */
   disconnect(): void
   isConfigured(): boolean

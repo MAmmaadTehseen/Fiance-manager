@@ -11,7 +11,7 @@
     "dev": "npm run dev -w @batwa/web",
     "build": "npm run build -w @batwa/web",
     "preview": "npm run preview -w @batwa/web",
-    "lint": "npm run lint -w @batwa/web",
+    "lint": "oxlint apps/web/src packages/core/src supabase/functions",
     "typecheck": "npm run typecheck -w @batwa/core && npm run typecheck -w @batwa/web && npm run typecheck -w @batwa/mobile",
     "db:start": "supabase start",
     "db:stop": "supabase stop",

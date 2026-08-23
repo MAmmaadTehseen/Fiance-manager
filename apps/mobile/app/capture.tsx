@@ -25,6 +25,16 @@ import { palette, resolveScheme, type Colors } from '../lib/theme'
 import { useAppUpdate, useOtaUpdate } from '../lib/appUpdate'
 import { useSession } from '../lib/session'
 
+/** A human label for the token list, so a user with two phones can tell them
+ *  apart when revoking. */
+function deviceLabel(): string {
+  // Model/Brand exist on Android's PlatformConstants but aren't in the
+  // cross-platform type, hence the cast.
+  const c = Platform.constants as { Model?: string; Brand?: string }
+  const model = c.Model ?? c.Brand
+  return model ? `Batwa · ${model}` : 'Batwa Android'
+}
+
 function Card({ colors, children }: { colors: Colors; children: React.ReactNode }) {
   return (
     <View
@@ -134,29 +144,44 @@ export default function Capture() {
    * The raw token never leaves the device — only its hash is stored server
    * side — and the user never copies anything, which is the whole reason this
    * app exists rather than a MacroDroid macro.
+   *
+   * Reconnecting revokes the previous token first, so a device never leaves a
+   * trail of live credentials behind it. The insert is done BEFORE the native
+   * configure: a device configured with a token the server rejected would
+   * fail every upload, whereas a server token the device never stored is inert.
    */
   async function connect() {
     setError(null)
     setConnecting(true)
     try {
-      const granted = await PermissionsAndroid.requestMultiple([
+      // Only RECEIVE_SMS is used (SmsReceiver is a broadcast receiver); READ_SMS
+      // is not requested — nothing reads the SMS provider, and asking for it
+      // trips Google Play's restricted-permission review for no benefit.
+      const granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.RECEIVE_SMS,
-        PermissionsAndroid.PERMISSIONS.READ_SMS,
-      ])
-      const ok =
-        granted['android.permission.RECEIVE_SMS'] ===
-        PermissionsAndroid.RESULTS.GRANTED
+      )
+      const ok = granted === PermissionsAndroid.RESULTS.GRANTED
+
+      // Revoke whatever this device was using before, so Connect/Disconnect/
+      // Connect does not accumulate live tokens.
+      const previousHash = BatwaCapture.tokenHash()
+      if (previousHash) {
+        await getSupabase()
+          .from('ingest_tokens')
+          .update({ revoked_at: new Date().toISOString() })
+          .eq('token_hash', previousHash)
+      }
 
       const token = generateIngestToken()
+      const hash = sha256Hex(token)
       const { error: insertError } = await getSupabase()
         .from('ingest_tokens')
-        .insert({
-          token_hash: sha256Hex(token),
-          label: 'Batwa Android',
-        })
+        .insert({ token_hash: hash, label: deviceLabel() })
       if (insertError) throw insertError
 
-      BatwaCapture.configure(token, smsIngestUrl())
+      // Store the hash too, so a later disconnect can revoke by identity
+      // without the raw token.
+      BatwaCapture.configure(token, smsIngestUrl(), hash)
 
       if (!ok) {
         setError(
@@ -171,7 +196,24 @@ export default function Capture() {
     }
   }
 
+  /** Clears the device AND revokes the server-side token, so the credential
+   *  the UI says is gone actually is. */
+  async function disconnect() {
+    const hash = BatwaCapture.tokenHash()
+    BatwaCapture.disconnect()
+    if (hash) {
+      await getSupabase()
+        .from('ingest_tokens')
+        .update({ revoked_at: new Date().toISOString() })
+        .eq('token_hash', hash)
+    }
+    await refresh()
+  }
+
   async function signOut() {
+    // A signed-out device that keeps forwarding posts into an account nobody
+    // is watching. Revoke the token as part of leaving.
+    await disconnect()
     await getSupabase().auth.signOut()
     router.replace('/sign-in')
   }
@@ -292,10 +334,7 @@ export default function Capture() {
               colors={colors}
               tone="quiet"
               label="Disconnect"
-              onPress={() => {
-                BatwaCapture.disconnect()
-                void refresh()
-              }}
+              onPress={() => void disconnect()}
             />
           </View>
         )}
@@ -377,17 +416,21 @@ export default function Capture() {
             Test it
           </Text>
           <Text style={{ fontSize: 14, color: colors.sub, lineHeight: 20 }}>
-            Sends one fake bank message through the real pipeline. It should
-            appear in your inbox on the web app within seconds.
+            Sends one test message through the real pipeline to prove your
+            phone can forward. It is recognised as a test and never becomes a
+            transaction.
           </Text>
           <Button
             colors={colors}
             tone="quiet"
             label="Send a test message"
             onPress={() => {
+              // Deliberately an OTP-shaped message: it travels the whole
+              // pipe and lands as 'ignored', proving capture works without
+              // inventing a transaction or a phantom card in the ledger.
               BatwaCapture.captureForTesting(
                 'BATWA-TEST',
-                'PKR 123.00 Debit Card purchase at BATWA TEST from FBL A/C *0000 on 01/JAN/2026 at 12:00:00 PM',
+                'Batwa test OTP is 000000. This confirms your phone can forward messages.',
               )
               setTimeout(refresh, 1500)
             }}

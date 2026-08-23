@@ -6,6 +6,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import type { Session, User } from '@supabase/supabase-js'
 import { getSupabase } from '@batwa/core'
 
@@ -30,6 +31,7 @@ type AuthContextValue = AuthState & {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient()
   const [state, setState] = useState<AuthState>({
     session: null,
     user: null,
@@ -49,14 +51,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     const { data: sub } = getSupabase().auth.onAuthStateChange((_event, session) => {
-      setState({ session, user: session?.user ?? null, loading: false })
+      setState((prev) => {
+        // A different user (or none) means the previous user's cached queries
+        // must not survive. Query keys carry no user id and staleTime is 30s,
+        // so without this user B briefly sees user A's balances and SMS.
+        if (prev.user?.id !== (session?.user?.id ?? null)) {
+          queryClient.clear()
+        }
+        return { session, user: session?.user ?? null, loading: false }
+      })
     })
 
     return () => {
       active = false
       sub.subscription.unsubscribe()
     }
-  }, [])
+  }, [queryClient])
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -84,6 +94,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async signOut() {
         const { error } = await getSupabase().auth.signOut()
         if (error) throw error
+        // Belt and braces: onAuthStateChange clears too, but do it here so
+        // the cache is empty the instant the promise resolves.
+        queryClient.clear()
       },
 
       async resetPassword(email) {
@@ -94,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) throw error
       },
     }),
-    [state],
+    [state, queryClient],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

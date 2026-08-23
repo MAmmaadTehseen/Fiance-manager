@@ -458,6 +458,7 @@ export type Database = {
           note: string | null
           occurred_at: string
           sms_message_id: string | null
+          sms_message_id_2: string | null
           source: Database["public"]["Enums"]["transaction_source"]
           status: Database["public"]["Enums"]["transaction_status"]
           tags: string[]
@@ -479,6 +480,7 @@ export type Database = {
           note?: string | null
           occurred_at?: string
           sms_message_id?: string | null
+          sms_message_id_2?: string | null
           source?: Database["public"]["Enums"]["transaction_source"]
           status?: Database["public"]["Enums"]["transaction_status"]
           tags?: string[]
@@ -500,6 +502,7 @@ export type Database = {
           note?: string | null
           occurred_at?: string
           sms_message_id?: string | null
+          sms_message_id_2?: string | null
           source?: Database["public"]["Enums"]["transaction_source"]
           status?: Database["public"]["Enums"]["transaction_status"]
           tags?: string[]
@@ -548,6 +551,13 @@ export type Database = {
             columns: ["merchant_id", "user_id"]
             isOneToOne: false
             referencedRelation: "merchants"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "transactions_sms_message_id_2_fkey"
+            columns: ["sms_message_id_2", "user_id"]
+            isOneToOne: false
+            referencedRelation: "sms_messages"
             referencedColumns: ["id", "user_id"]
           },
           {

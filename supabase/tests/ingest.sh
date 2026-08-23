@@ -9,7 +9,7 @@ set -uo pipefail
 
 # Defaults to the local stack; override to run against a deployed project:
 #   API_URL=https://<ref>.supabase.co ANON_KEY=<key> bash <this script>
-API="${API_URL:-http://127.0.0.1:54521}"
+API="${API_URL:-http://127.0.0.1:55001}"
 FN="$API/functions/v1/sms-ingest"
 ANON="${ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0}"
 
@@ -172,6 +172,32 @@ CROSS=$(reprocess "$TOK_B" "{\"message_id\":\"$A_MSG\"}")
 NOJWT=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$API/functions/v1/sms-reprocess" \
   -H "apikey: $ANON" -H "Content-Type: application/json" -d '{}')
 [ "$NOJWT" = "401" ] && ok "reprocess requires a signed-in user (401)" || no "reprocess auth" "http $NOJWT"
+
+echo "== interbank transfer books ONE row, not two =="
+# Two of A's own accounts, so a movement between them is an internal transfer.
+# The Meezan account also owns the 'MEEZAN' sender id, as the inbox flow would
+# record it, so the sent leg (which names only the recipient) resolves its
+# source from who sent the SMS.
+rest POST "accounts" "$TOK_A" \
+  '{"name":"Meezan","type":"bank","last4":"0508","opening_balance":20000,"sms_senders":["MEEZAN"]}' > /dev/null
+rest POST "accounts" "$TOK_A" \
+  '{"name":"Faysal","type":"bank","last4":"7432","opening_balance":0}' > /dev/null
+# The debit leg (Meezan, names recipient 7432) and the credit leg (Faysal,
+# names our 7432 as destination), two senders inside the match window.
+LEG1=$(send "$RAW_TOKEN" "Meezan" "Rs 3,000.00 sent to SELF A/C 7432 on 21-Aug-26 at 02:15:00 PM. TID:900001 via IBFT")
+LEG2=$(send "$RAW_TOKEN" "Faysal" "PKR 3,000.00 received from A* MBL A/C *0508 via RAAST in FBL A/C *7432 on 21-Aug-26 at 02:16:00 PM Ref # 900002")
+TRANSFERS=$(rest GET "transactions?select=id,amount&type=eq.transfer&amount=eq.3000" "$TOK_A")
+NTR=$(echo "$TRANSFERS" | grep -o '"id"' | wc -l)
+[ "$NTR" = "1" ] \
+  && ok "two legs of one transfer -> exactly one transfer row" \
+  || no "interbank double-booked (expected 1, got $NTR)" "$TRANSFERS"
+[ "$(field "$LEG2" status)" = "linked" ] \
+  && ok "second leg links rather than inserting" || no "second leg not linked" "$LEG2"
+
+echo "== a reversal books as income, not ignored =="
+REV=$(send "$RAW_TOKEN" "Meezan" "Your transaction has been reversed. PKR 500.00 credited to your A/C 0508 on 21-Aug-26 at 03:00:00 PM. Ref # 900003")
+[ "$(field "$REV" type)" = "income" ] \
+  && ok "reversal -> income (money came back)" || no "reversal not booked as income" "$REV"
 
 echo "== isolation =="
 B_MSGS=$(rest GET "sms_messages?select=id" "$TOK_B")

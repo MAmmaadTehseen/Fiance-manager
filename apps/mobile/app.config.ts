@@ -29,7 +29,9 @@ const config: ExpoConfig = {
       // Manifest-registered receiver: fires even when the app is killed,
       // which is the normal state when a bank SMS lands.
       'android.permission.RECEIVE_SMS',
-      'android.permission.READ_SMS',
+      // READ_SMS is deliberately absent: nothing reads the SMS content
+      // provider (capture is broadcast-based), and requesting it trips Google
+      // Play's restricted-permission review for no benefit.
       'android.permission.INTERNET',
       // Lets the retry queue drain after a reboot.
       'android.permission.RECEIVE_BOOT_COMPLETED',
@@ -56,6 +58,11 @@ const config: ExpoConfig = {
   ],
 
   updates: {
+    // Without this url, expo-updates is disabled in built APKs and the whole
+    // OTA half is dead: `eas update` publishes bundles no client ever fetches
+    // and the in-app update banner can never fire. The u.expo.dev endpoint is
+    // derived from the EAS project id.
+    url: 'https://u.expo.dev/6d023af2-8e41-404e-b250-3d16f6d61ac6',
     // Over-the-air JS only applies to a build it is compatible with. Tying
     // the runtime to the app version means a native change forces a real
     // build instead of shipping JS that calls a module the binary lacks.

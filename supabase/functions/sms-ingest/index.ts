@@ -159,9 +159,18 @@ Deno.serve(async (req) => {
     console.error('could not record token usage:', err)
   }
 
-  const receivedAt = payload.received_at
-    ? new Date(payload.received_at).toISOString()
-    : new Date().toISOString()
+  // received_at comes from the forwarder and cannot be trusted to parse. An
+  // Invalid Date would throw on toISOString BEFORE the message is stored --
+  // permanently dropping a real transaction over a timestamp format. Fall
+  // back to now(), and clamp implausible values since this feeds the dedupe
+  // fingerprint and occurred_at.
+  const receivedAt = (() => {
+    const parsed = payload.received_at ? new Date(payload.received_at) : null
+    if (!parsed || Number.isNaN(parsed.getTime())) return new Date().toISOString()
+    const drift = Math.abs(parsed.getTime() - Date.now())
+    const WEEK = 7 * 24 * 3600 * 1000
+    return drift > WEEK ? new Date().toISOString() : parsed.toISOString()
+  })()
 
   // --- store the message verbatim ----------------------------------------
   // body_hash is computed by a trigger, so duplicates are caught by the unique
