@@ -5,6 +5,7 @@ import { LandingPage } from '@/features/marketing/LandingPage'
 import { DownloadPage } from '@/features/marketing/DownloadPage'
 import { SignInPage } from '@/features/auth/SignInPage'
 import { SignUpPage } from '@/features/auth/SignUpPage'
+import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { AccountsPage } from '@/features/accounts/AccountsPage'
 import { TransactionsPage } from '@/features/transactions/TransactionsPage'
@@ -38,6 +39,7 @@ export function App() {
         <Route path="/download" element={<DownloadPage />} />
         <Route path="/sign-in" element={<SignInPage />} />
         <Route path="/sign-up" element={<SignUpPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     )
@@ -53,6 +55,9 @@ export function App() {
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
       <Route path="/download" element={<DownloadPage />} />
+      {/* Reachable signed-in too: the recovery link establishes a session, so
+          the reset form must render regardless of which route tree is active. */}
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
