@@ -424,3 +424,8 @@ verify_jwt = false
 # checks the JWT by hand.
 [functions.gmail-connect]
 verify_jwt = false
+
+# Two callers: a signed-in user (JWT, checked by hand) and the scheduler (a
+# shared cron secret). Neither fits the gateway's JWT check.
+[functions.gmail-sync]
+verify_jwt = false
