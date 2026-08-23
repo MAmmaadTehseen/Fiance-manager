@@ -245,6 +245,48 @@ export type Database = {
           },
         ]
       }
+      email_accounts: {
+        Row: {
+          access_token: string | null
+          connected_at: string
+          email_address: string
+          history_id: string | null
+          id: string
+          last_synced_at: string | null
+          provider: string
+          refresh_token: string
+          revoked_at: string | null
+          token_expires_at: string | null
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          connected_at?: string
+          email_address: string
+          history_id?: string | null
+          id?: string
+          last_synced_at?: string | null
+          provider?: string
+          refresh_token: string
+          revoked_at?: string | null
+          token_expires_at?: string | null
+          user_id?: string
+        }
+        Update: {
+          access_token?: string | null
+          connected_at?: string
+          email_address?: string
+          history_id?: string | null
+          id?: string
+          last_synced_at?: string | null
+          provider?: string
+          refresh_token?: string
+          revoked_at?: string | null
+          token_expires_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       ingest_tokens: {
         Row: {
           created_at: string

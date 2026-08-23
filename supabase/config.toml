@@ -414,7 +414,13 @@ enabled = true
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
 
 # The phone forwarding bank SMS authenticates with its own ingest token, not a
-# Supabase JWT — MacroDroid cannot hold a session. The function verifies that
-# token itself before touching anything.
+# Supabase JWT — a background receiver holds no session. The function verifies
+# that token itself before touching anything.
 [functions.sms-ingest]
+verify_jwt = false
+
+# The OAuth callback is a browser redirect from Google with no Supabase JWT to
+# present; the user is carried in a signed `state` instead. The start path
+# checks the JWT by hand.
+[functions.gmail-connect]
 verify_jwt = false

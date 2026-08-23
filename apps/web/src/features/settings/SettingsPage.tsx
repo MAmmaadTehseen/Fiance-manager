@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { useAuth } from '@/lib/auth'
 import { useTheme } from '@/lib/theme'
 import { buildLedgerCsv } from '@batwa/core'
+import { ConnectEmail } from './ConnectEmail'
 import { ConnectPhone } from './ConnectPhone'
 
 const CARD =
@@ -63,6 +64,9 @@ export function SettingsPage() {
           </p>
         </div>
       </div>
+
+      {/* ------------------------------------------------- email connection */}
+      <ConnectEmail />
 
       {/* -------------------------------------------------- phone connection */}
       <ConnectPhone />
