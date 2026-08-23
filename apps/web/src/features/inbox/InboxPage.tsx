@@ -142,6 +142,11 @@ function UnknownCardCard({ message }: { message: OpenMessage }) {
         Which account is •••• {last4}?
       </p>
 
+      {/* The original SMS, so it's obvious which payment this is about. */}
+      <p className="m-0 rounded-xl bg-soft px-3.5 py-3 font-mono text-[13px] leading-[1.55] text-sub">
+        {message.body}
+      </p>
+
       <div className="flex flex-wrap gap-2">
         {accounts
           .filter((a) => a.type !== 'cash')

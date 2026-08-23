@@ -97,6 +97,21 @@ function parsePayload(
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
+  try {
+    return await handle(req)
+  } catch (e) {
+    // An uncaught throw here would 500 without CORS headers. Worse, the phone
+    // treats a 5xx as retryable and keeps the message queued, so a message
+    // that reliably crashes the pipeline would retry forever. Report it.
+    console.error('sms-ingest failed:', e)
+    return json(
+      { status: 'error', error: e instanceof Error ? e.message : 'ingest failed' },
+      500,
+    )
+  }
+})
+
+async function handle(req: Request): Promise<Response> {
   if (req.method !== 'POST') return json({ error: 'POST only' }, 405)
 
   const token =
@@ -197,4 +212,4 @@ Deno.serve(async (req) => {
 
   const result = await processStoredMessage(db, userId, message)
   return json(result, result.status === 'error' ? 500 : 200)
-})
+}

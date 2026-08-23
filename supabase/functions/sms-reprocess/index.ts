@@ -31,6 +31,21 @@ function json(body: unknown, status = 200): Response {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
+  try {
+    return await handle(req)
+  } catch (e) {
+    // Any uncaught throw would otherwise become a bare 500 with no CORS
+    // headers, which the browser reports as a CORS error and the UI cannot
+    // read. Route it through json() so the real message reaches the client.
+    console.error('sms-reprocess failed:', e)
+    return json(
+      { error: e instanceof Error ? e.message : 'reprocess failed' },
+      500,
+    )
+  }
+})
+
+async function handle(req: Request): Promise<Response> {
   if (req.method !== 'POST') return json({ error: 'POST only' }, 405)
 
   const authHeader = req.headers.get('authorization') ?? ''
@@ -85,7 +100,18 @@ Deno.serve(async (req) => {
 
   const results: PipelineResult[] = []
   for (const message of messages) {
-    results.push(await processStoredMessage(db, userId, message))
+    // One malformed message must not abort the whole batch — the others are
+    // still worth processing, and the failure is surfaced per message.
+    try {
+      results.push(await processStoredMessage(db, userId, message))
+    } catch (e) {
+      console.error('reprocess of', message.id, 'failed:', e)
+      results.push({
+        status: 'error',
+        message_id: message.id,
+        error: e instanceof Error ? e.message : 'processing failed',
+      })
+    }
   }
 
   const summary = results.reduce<Record<string, number>>((acc, r) => {
@@ -94,4 +120,4 @@ Deno.serve(async (req) => {
   }, {})
 
   return json({ processed: results.length, summary, results })
-})
+}
