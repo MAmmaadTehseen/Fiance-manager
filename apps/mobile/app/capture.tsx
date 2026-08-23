@@ -143,7 +143,7 @@ export default function Capture() {
    *
    * The raw token never leaves the device — only its hash is stored server
    * side — and the user never copies anything, which is the whole reason this
-   * app exists rather than a MacroDroid macro.
+   * app exists rather than a hand-wired SMS forwarder.
    *
    * Reconnecting revokes the previous token first, so a device never leaves a
    * trail of live credentials behind it. The insert is done BEFORE the native

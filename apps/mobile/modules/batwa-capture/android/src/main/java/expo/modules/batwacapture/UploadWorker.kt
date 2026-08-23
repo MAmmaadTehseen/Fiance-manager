@@ -114,8 +114,8 @@ class UploadWorker(
                 setRequestProperty("X-Ingest-Token", token)
                 // Form encoding, not JSON: bank messages carry quotes and line
                 // breaks, and the HTTP client escapes those for us. Building
-                // JSON by hand around arbitrary message text is how the
-                // MacroDroid setup silently lost messages.
+                // JSON by hand around arbitrary message text is how a
+                // hand-built forwarder silently lost messages.
                 setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
             }
 

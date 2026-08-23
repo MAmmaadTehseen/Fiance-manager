@@ -27,7 +27,7 @@ class BatwaCaptureModule : Module() {
         /**
          * Stores the ingest credential. Called once, after the app has signed
          * in and minted a token — which is why the user never copies one by
-         * hand the way the MacroDroid setup required.
+         * hand the way a third-party forwarder would have required.
          */
         Function("configure") { token: String, endpoint: String, tokenHash: String ->
             CaptureStore.setConfig(context, token, endpoint, tokenHash)

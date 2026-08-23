@@ -1,14 +1,13 @@
 /**
  * sms-ingest — the automation entry point.
  *
- * The user's phone (MacroDroid, Tasker, or a companion app) POSTs a bank SMS
- * here. We authenticate the device, store the message verbatim, and hand it to
- * the shared pipeline, which decides whether it can be filed silently or needs
- * a one-tap answer in the inbox.
+ * The Batwa Android app POSTs a bank SMS here. We authenticate the device,
+ * store the message verbatim, and hand it to the shared pipeline, which decides
+ * whether it can be filed silently or needs a one-tap answer in the inbox.
  *
- * Auth is a per-device bearer token, NOT a Supabase JWT — MacroDroid cannot
- * hold a session. `verify_jwt = false` is set for this function in
- * config.toml, so the request is authenticated by hand below.
+ * Auth is a per-device bearer token, NOT a Supabase JWT — capture runs in a
+ * background receiver with no session to hold. `verify_jwt = false` is set for
+ * this function in config.toml, so the request is authenticated by hand below.
  */
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
