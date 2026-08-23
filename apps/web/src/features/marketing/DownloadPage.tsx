@@ -14,7 +14,7 @@ import { useTheme } from '@/lib/theme'
 // Updated on each release. The app compares its version against
 // public/app-version.json and links here when a new build exists.
 const ANDROID_BUILD_URL =
-  'https://expo.dev/artifacts/eas/-rqa2bf63QiD_FlYyM-dmhMhSZBYVpTXLU9CJXUDwjo.apk'
+  'https://expo.dev/artifacts/eas/RWw1ELuaX5DW2kiH6Yvx7As7srXn5_3eiDXBTE5PT9o.apk'
 
 const STEPS = [
   {
