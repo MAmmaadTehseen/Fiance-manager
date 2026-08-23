@@ -125,6 +125,12 @@ export function LandingPage() {
             >
               How it works
             </a>
+            <Link
+              to="/download"
+              className="text-sm font-semibold text-[var(--sub)] no-underline transition hover:text-[var(--ink)]"
+            >
+              Get the app
+            </Link>
             <button
               type="button"
               onClick={toggleTheme}
@@ -176,12 +182,12 @@ export function LandingPage() {
             <Link to="/sign-up" className={PRIMARY_BTN}>
               Start free
             </Link>
-            <a
-              href="#how"
+            <Link
+              to="/download"
               className="rounded-[14px] border border-[var(--line)] bg-[var(--card-bg)] px-6 py-[14px] text-[15px] font-bold text-[var(--ink)] no-underline transition hover:bg-[var(--soft)]"
             >
-              See how it works
-            </a>
+              Get the Android app
+            </Link>
           </div>
 
           <p className="mb-0 mt-1 text-[13px] text-[var(--sub)]">
