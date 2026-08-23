@@ -7,6 +7,7 @@ import {
   useConnectGmail,
   useDisconnectGmail,
   useEmailAccount,
+  useSyncGmail,
 } from '@batwa/core'
 
 /**
@@ -18,6 +19,7 @@ export function ConnectEmail() {
   const { data: account, isLoading } = useEmailAccount()
   const connect = useConnectGmail()
   const disconnect = useDisconnectGmail()
+  const sync = useSyncGmail()
 
   // The OAuth callback lands back here with ?gmail=connected|error.
   const [flash, setFlash] = useState<'connected' | 'error' | null>(null)
@@ -33,7 +35,11 @@ export function ConnectEmail() {
         '',
         window.location.pathname + (qs ? `?${qs}` : ''),
       )
+      // First pull runs immediately on connect, so mail lands without waiting
+      // for the scheduler.
+      if (g === 'connected') sync.mutate()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function start() {
@@ -84,19 +90,37 @@ export function ConnectEmail() {
                 {account.email_address}
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                {account.last_synced_at
-                  ? `Last checked ${format(parseISO(account.last_synced_at), 'd MMM, HH:mm')}`
-                  : 'Connected — first check runs shortly'}
+                {sync.isPending
+                  ? 'Checking your inbox…'
+                  : sync.data
+                    ? `Filed ${sync.data.filed ?? 0} of ${sync.data.scanned ?? 0} scanned`
+                    : account.last_synced_at
+                      ? `Last checked ${format(parseISO(account.last_synced_at), 'd MMM, HH:mm')}`
+                      : 'Connected — first check runs shortly'}
               </p>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => disconnect.mutate(account.id)}
-              disabled={disconnect.isPending}
-            >
-              Disconnect
-            </Button>
+            <div className="flex shrink-0 items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => sync.mutate()}
+                disabled={sync.isPending}
+              >
+                {sync.isPending ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                ) : (
+                  'Sync now'
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => disconnect.mutate(account.id)}
+                disabled={disconnect.isPending}
+              >
+                Disconnect
+              </Button>
+            </div>
           </div>
         ) : (
           <Button

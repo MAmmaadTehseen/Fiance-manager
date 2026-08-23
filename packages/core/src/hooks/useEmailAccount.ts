@@ -62,3 +62,29 @@ export function useDisconnectGmail() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: emailAccountKeys.current }),
   })
 }
+
+export type SyncResult = {
+  status?: string
+  email?: string
+  scanned?: number
+  new?: number
+  filed?: number
+  error?: string
+}
+
+/** Pulls the connected inbox now. Refreshes the ledger + inbox on success. */
+export function useSyncGmail() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (): Promise<SyncResult> => {
+      const { data, error } = await getSupabase().functions.invoke('gmail-sync', {
+        body: {},
+      })
+      if (error) throw error
+      return data as SyncResult
+    },
+    // A sync can create transactions and inbox items across the app, so refresh
+    // everything rather than guess which query keys were touched.
+    onSuccess: () => void qc.invalidateQueries(),
+  })
+}
