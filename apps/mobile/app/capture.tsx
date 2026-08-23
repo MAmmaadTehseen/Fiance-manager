@@ -10,7 +10,6 @@ import {
   ScrollView,
   Text,
   View,
-  useColorScheme,
 } from 'react-native'
 import { router } from 'expo-router'
 import {
@@ -21,7 +20,8 @@ import {
 } from '@batwa/core'
 
 import { BatwaCapture, type CaptureStatus } from '../modules/batwa-capture'
-import { palette, resolveScheme, type Colors } from '../lib/theme'
+import type { Colors } from '../lib/theme'
+import { useColors } from '../lib/useTheme'
 import { useAppUpdate, useOtaUpdate } from '../lib/appUpdate'
 import { useSession } from '../lib/session'
 
@@ -102,7 +102,7 @@ function Button({
 }
 
 export default function Capture() {
-  const colors = palette[resolveScheme(useColorScheme())]
+  const colors = useColors()
   const { session } = useSession()
 
   const { currentVersion, nativeUpdate } = useAppUpdate()

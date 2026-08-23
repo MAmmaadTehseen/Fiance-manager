@@ -8,15 +8,14 @@ import {
   Text,
   TextInput,
   View,
-  useColorScheme,
 } from 'react-native'
 import { router } from 'expo-router'
 import { getSupabase } from '@batwa/core'
 
-import { palette, resolveScheme } from '../lib/theme'
+import { useColors } from '../lib/useTheme'
 
 export default function SignIn() {
-  const colors = palette[resolveScheme(useColorScheme())]
+  const colors = useColors()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -31,7 +30,7 @@ export default function SignIn() {
         { email: email.trim(), password },
       )
       if (signInError) throw signInError
-      router.replace('/capture')
+      router.replace('/home')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not sign in')
     } finally {
