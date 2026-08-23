@@ -406,7 +406,7 @@ export function EmptyState({
 
 // -------------------------------------------------------------- tab icons
 
-type IconName = 'home' | 'activity' | 'inbox' | 'accounts' | 'settings'
+type IconName = 'home' | 'activity' | 'inbox' | 'accounts' | 'plan' | 'settings'
 
 /**
  * Tab-bar icons composed from Views — no icon font, no SVG, so no native
@@ -507,6 +507,25 @@ export function TabIcon({ name, color }: { name: IconName; color: ColorValue }) 
           }}
         >
           <View style={{ height: 2, backgroundColor: color, marginTop: 2 }} />
+        </View>
+      )
+    case 'plan':
+      // A target — concentric ring and centre dot.
+      return (
+        <View style={{ width: 22, height: 22, alignItems: 'center', justifyContent: 'center' }}>
+          <View
+            style={{
+              width: 20,
+              height: 20,
+              borderRadius: 10,
+              borderWidth: 2,
+              borderColor: color,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: color }} />
+          </View>
         </View>
       )
     case 'settings':
