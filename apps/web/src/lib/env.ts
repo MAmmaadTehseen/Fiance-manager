@@ -21,3 +21,13 @@ export const env = {
   ),
   vapidPublicKey: import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined,
 }
+
+/**
+ * The production Supabase project. Anything NOT pointed here — dev.batwa.online,
+ * a local stack, a preview build — is treated as non-production and shows the
+ * dev banner. Safe by default: a new environment is flagged unless it is
+ * explicitly the real project, never the other way round.
+ */
+const PROD_SUPABASE_REF = 'byjytsoeayopmcaabgyj'
+
+export const isProductionDeploy = env.supabaseUrl.includes(PROD_SUPABASE_REF)

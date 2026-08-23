@@ -6,6 +6,7 @@ import { initSupabase } from '@batwa/core'
 import { env } from '@/lib/env'
 import { AuthProvider } from '@/lib/auth'
 import { ThemeProvider } from '@/lib/theme'
+import { DevBanner } from '@/components/DevBanner'
 import { App } from '@/app/App'
 import './index.css'
 
@@ -31,6 +32,7 @@ createRoot(document.getElementById('root')!).render(
       <ThemeProvider>
         <BrowserRouter>
           <AuthProvider>
+            <DevBanner />
             <App />
           </AuthProvider>
         </BrowserRouter>
