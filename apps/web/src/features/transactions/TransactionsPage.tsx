@@ -12,6 +12,7 @@ import {
   useInboxCount,
   useTransactions,
   type RangePreset,
+  type TransactionRow,
   type TransactionType,
 } from '@batwa/core'
 import { TransactionList } from './TransactionList'
@@ -36,6 +37,7 @@ const RANGES: { id: RangePreset; label: string }[] = [
 
 export function TransactionsPage() {
   const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState<TransactionRow | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
   const [range, setRange] = useState<RangePreset>('all')
   const [categoryId, setCategoryId] = useState<string | null>(null)
@@ -247,11 +249,24 @@ export function TransactionsPage() {
         </Card>
       ) : (
         <Card className="overflow-hidden p-0">
-          <TransactionList transactions={transactions} loading={isLoading} />
+          <TransactionList
+            transactions={transactions}
+            loading={isLoading}
+            onSelect={setEditing}
+          />
         </Card>
       )}
 
       {adding && <TransactionForm onClose={() => setAdding(false)} />}
+      {editing && (
+        <TransactionForm
+          // Keyed so switching rows remounts the form; without it the fields
+          // keep the previous transaction's state.
+          key={editing.id}
+          transaction={editing}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>
   )
 }

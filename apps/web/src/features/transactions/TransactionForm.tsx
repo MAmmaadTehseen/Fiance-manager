@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { X } from 'lucide-react'
+import { Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import { parseAmount } from '@batwa/core'
+import { parseAmount, toNumber } from '@batwa/core'
 import { useAccounts } from '@batwa/core'
 import { useCategories } from '@batwa/core'
-import { useCreateTransaction } from '@batwa/core'
-import type { TransactionType } from '@batwa/core'
+import {
+  useCreateTransaction,
+  useDeleteTransaction,
+  useUpdateTransaction,
+} from '@batwa/core'
+import type { TransactionRow, TransactionType } from '@batwa/core'
 
 const TYPES: { value: TransactionType; label: string }[] = [
   { value: 'expense', label: 'Spent' },
@@ -22,23 +26,49 @@ function localDateTimeValue(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export function TransactionForm({ onClose }: { onClose: () => void }) {
+/**
+ * The add sheet, and — given a `transaction` — the edit sheet.
+ *
+ * They are one component because the fields, the validation and the shape sent
+ * to the server are identical; only the mutation at the end differs. Splitting
+ * them would mean maintaining the same form twice.
+ */
+export function TransactionForm({
+  transaction,
+  onClose,
+}: {
+  transaction?: TransactionRow
+  onClose: () => void
+}) {
+  const editing = transaction != null
+
   const { data: accounts = [] } = useAccounts()
-  const [type, setType] = useState<TransactionType>('expense')
+  const [type, setType] = useState<TransactionType>(
+    transaction?.type ?? 'expense',
+  )
   const { data: categories = [] } = useCategories(
     type === 'income' ? 'income' : 'expense',
   )
   const create = useCreateTransaction()
+  const update = useUpdateTransaction()
+  const remove = useDeleteTransaction()
 
-  const [amount, setAmount] = useState('')
-  const [accountId, setAccountId] = useState('')
-  const [toAccountId, setToAccountId] = useState('')
-  const [categoryId, setCategoryId] = useState('')
-  const [note, setNote] = useState('')
+  const [amount, setAmount] = useState(
+    transaction ? String(toNumber(transaction.amount)) : '',
+  )
+  const [accountId, setAccountId] = useState(transaction?.account_id ?? '')
+  const [toAccountId, setToAccountId] = useState(
+    transaction?.counterparty_account_id ?? '',
+  )
+  const [categoryId, setCategoryId] = useState(transaction?.category_id ?? '')
+  const [note, setNote] = useState(transaction?.note ?? '')
   const [occurredAt, setOccurredAt] = useState(() =>
-    localDateTimeValue(new Date()),
+    localDateTimeValue(
+      transaction ? new Date(transaction.occurred_at) : new Date(),
+    ),
   )
   const [error, setError] = useState<string | null>(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   // Default to the primary account once accounts load.
   useEffect(() => {
@@ -47,10 +77,31 @@ export function TransactionForm({ onClose }: { onClose: () => void }) {
     }
   }, [accounts, accountId])
 
-  // Category lists differ per type, so a stale selection must not survive.
-  useEffect(() => setCategoryId(''), [type])
+  /**
+   * Switching type swaps the category list, so a selection from the old list
+   * has to go. This lives in the handler rather than an effect keyed on `type`
+   * because such an effect also fires on mount — which would wipe the category
+   * of the transaction being edited before the user touched anything.
+   */
+  function changeType(next: TransactionType) {
+    setType(next)
+    setCategoryId('')
+  }
 
   const parsedAmount = useMemo(() => parseAmount(amount), [amount])
+
+  const pending = create.isPending || update.isPending || remove.isPending
+
+  async function onDelete() {
+    if (!transaction) return
+    setError(null)
+    try {
+      await remove.mutateAsync(transaction.id)
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not delete')
+    }
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -64,16 +115,30 @@ export function TransactionForm({ onClose }: { onClose: () => void }) {
         return setError('Choose two different accounts.')
     }
 
+    const fields = {
+      account_id: accountId,
+      type,
+      amount: parsedAmount,
+      occurred_at: new Date(occurredAt).toISOString(),
+      category_id: type === 'transfer' ? null : categoryId || null,
+      counterparty_account_id: type === 'transfer' ? toAccountId : null,
+      note: note.trim() || null,
+    }
+
     try {
-      await create.mutateAsync({
-        account_id: accountId,
-        type,
-        amount: parsedAmount,
-        occurred_at: new Date(occurredAt).toISOString(),
-        category_id: type === 'transfer' ? null : categoryId || null,
-        counterparty_account_id: type === 'transfer' ? toAccountId : null,
-        note: note.trim() || null,
-      })
+      if (transaction) {
+        // An edited row is no longer a guess, so clear the review flag that
+        // sent it to the Inbox — the user has just told us what it is.
+        await update.mutateAsync({
+          id: transaction.id,
+          ...fields,
+          ...(transaction.status === 'needs_review'
+            ? { status: 'cleared' as const }
+            : {}),
+        })
+      } else {
+        await create.mutateAsync(fields)
+      }
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save')
@@ -84,7 +149,9 @@ export function TransactionForm({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-50 flex flex-col bg-background md:items-center md:justify-center md:bg-black/40 md:p-6">
       <div className="flex min-h-0 flex-1 flex-col md:max-h-[90vh] md:w-full md:max-w-md md:flex-none md:rounded-2xl md:border md:border-border md:bg-background">
         <header className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h2 className="text-base font-semibold">New transaction</h2>
+          <h2 className="text-base font-semibold">
+            {editing ? 'Edit transaction' : 'New transaction'}
+          </h2>
           <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
             <X />
           </Button>
@@ -105,7 +172,7 @@ export function TransactionForm({ onClose }: { onClose: () => void }) {
                 type="button"
                 role="radio"
                 aria-checked={type === t.value}
-                onClick={() => setType(t.value)}
+                onClick={() => changeType(t.value)}
                 className={cn(
                   'rounded-md py-2 text-sm font-medium transition-colors',
                   type === t.value
@@ -226,14 +293,48 @@ export function TransactionForm({ onClose }: { onClose: () => void }) {
             />
           </div>
 
-          <Button
-            type="submit"
-            size="lg"
-            className="mt-2"
-            disabled={create.isPending}
-          >
-            {create.isPending ? 'Saving…' : 'Save'}
+          <Button type="submit" size="lg" className="mt-2" disabled={pending}>
+            {create.isPending || update.isPending ? 'Saving…' : 'Save'}
           </Button>
+
+          {editing &&
+            (confirmingDelete ? (
+              <div className="flex flex-col gap-2 rounded-lg bg-destructive/10 p-3">
+                <p className="m-0 text-sm font-medium text-destructive">
+                  Delete this transaction? Balances will be recalculated.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    className="flex-1"
+                    disabled={pending}
+                    onClick={() => void onDelete()}
+                  >
+                    {remove.isPending ? 'Deleting…' : 'Delete'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="flex-1"
+                    onClick={() => setConfirmingDelete(false)}
+                  >
+                    Keep
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-destructive"
+                disabled={pending}
+                onClick={() => setConfirmingDelete(true)}
+              >
+                <Trash2 className="size-4" aria-hidden />
+                Delete
+              </Button>
+            ))}
         </form>
       </div>
     </div>
