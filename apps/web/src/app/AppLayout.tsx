@@ -5,6 +5,8 @@ import {
   ReceiptText,
   Inbox,
   Wallet,
+  PieChart,
+  Target,
   Settings,
   Plus,
   type LucideIcon,
@@ -27,6 +29,8 @@ const NAV: NavItem[] = [
   { to: '/transactions', label: 'Activity', icon: ReceiptText },
   { to: '/inbox', label: 'Inbox', icon: Inbox, badge: true },
   { to: '/accounts', label: 'Accounts', icon: Wallet },
+  { to: '/budgets', label: 'Budgets', icon: PieChart },
+  { to: '/goals', label: 'Goals', icon: Target },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 

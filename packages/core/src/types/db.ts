@@ -27,6 +27,8 @@ export type SmsMessage = Tables<'sms_messages'>
 export type IngestToken = Tables<'ingest_tokens'>
 export type ParserTemplate = Tables<'parser_templates'>
 export type BalanceAssertion = Tables<'balance_assertions'>
+export type Budget = Tables<'budgets'>
+export type SavingsGoal = Tables<'savings_goals'>
 
 /** Shape the ingest pipeline writes into `sms_messages.parsed`. */
 export type ParsedFields = {

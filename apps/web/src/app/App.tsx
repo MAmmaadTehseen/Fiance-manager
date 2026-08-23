@@ -10,6 +10,8 @@ import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { AccountsPage } from '@/features/accounts/AccountsPage'
 import { TransactionsPage } from '@/features/transactions/TransactionsPage'
 import { InboxPage } from '@/features/inbox/InboxPage'
+import { BudgetsPage } from '@/features/budgets/BudgetsPage'
+import { GoalsPage } from '@/features/goals/GoalsPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 
 function FullPageSpinner() {
@@ -52,6 +54,8 @@ export function App() {
         <Route path="/transactions" element={<TransactionsPage />} />
         <Route path="/inbox" element={<InboxPage />} />
         <Route path="/accounts" element={<AccountsPage />} />
+        <Route path="/budgets" element={<BudgetsPage />} />
+        <Route path="/goals" element={<GoalsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
       <Route path="/download" element={<DownloadPage />} />
