@@ -3,25 +3,19 @@
 Open work, roughly in priority order. Each item says what is missing and why it
 matters, so it can be picked up cold.
 
-## 1. `dev.batwa.online` has no environment behind it
+## 1. Flip the dev project's production branch to `develop`
 
-DNS is already live — `dev` is a CNAME to the same Vercel target as the apex —
-but no project claims the hostname, so it resolves to nothing.
+The dev environment is built and live (see Done), but one setting can't be set
+through Vercel's REST API: the `batwa-dev` project still has its **production
+branch = `master`**, so a push to `develop` currently makes a *preview*
+deployment rather than updating `dev.batwa.online`.
 
-The decision was a **separate Supabase project**, not a shared one. Dev writing
-to the production ledger is the one failure this app cannot tolerate: a bad
-migration or a replayed test SMS would corrupt real financial history.
+One-time fix, ~10 seconds in the dashboard:
 
-To build it:
+- Vercel → **batwa-dev** → Settings → Git → **Production Branch** → `develop` → Save
 
-- Second Vercel project off the same repo, tracking a `develop` branch, with
-  `dev.batwa.online` attached
-- Second Supabase project (free tier allows 2 per org; production is the first).
-  Push `supabase/migrations` to it and deploy both Edge Functions
-- Its own `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in the dev Vercel project
-- Add `https://dev.batwa.online/**` to that project's auth redirect allow-list
-- Free Supabase projects pause after 7 days idle, and a dev project will go
-  quiet — expect to resume it from the dashboard
+Until then, `dev.batwa.online` can be refreshed by redeploying `develop`
+manually (the initial deploy was triggered that way).
 
 ## Also tracked
 
@@ -31,11 +25,17 @@ To build it:
 
 ## Done
 
+- **Dev environment stood up** (Aug 2026). Separate Supabase project
+  `batwa-dev` (`edaxpqeszssgmlfpsyrn`, ap-southeast-2) with all 12 migrations,
+  both Edge Functions, and its auth allow-list set to `dev.batwa.online`. A
+  `batwa-dev` Vercel project on the `develop` branch, its own dev Supabase env
+  vars, and `dev.batwa.online` attached and serving — verified pointing at the
+  dev database, never prod. The DB password is in `.env.deploy.local`.
 - **Password recovery** — "Forgot password?" on sign-in and a signed-out
-  `/reset-password` route now close the loop (Aug 2026).
+  `/reset-password` route now close the loop.
 - **The rebrand is deployed** — `batwa.online` serves the Batwa manifest and
   theme colour; verified live.
 - **`README.md` describes Batwa** — the monorepo, the Android capture app, and
-  the live SMS pipeline, not the old "Finance Manager / Phase 2" framing.
+  the live SMS pipeline.
 - **MacroDroid is retired** — the app captures SMS itself; the forwarder setup
   instructions are gone from Settings and the codebase.
