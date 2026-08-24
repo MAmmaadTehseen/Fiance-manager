@@ -670,19 +670,44 @@ export async function processStoredMessage(
     // duplicate — which is the index doing its job, not a failure. Attach this
     // message to the row that won instead of reporting an error the user would
     // see as a lost transaction.
-    if (txError.code === '23505' && dedupeHash) {
-      const { data: winner } = await db
+    if (txError.code === '23505') {
+      // Either index may have fired: the reference one when another channel
+      // booked the same payment, or the per-message one when a concurrent run
+      // of this very pipeline got there first. Try the reference, then fall
+      // back to looking for this message's own row.
+      const byReference = dedupeHash
+        ? await db
+            .from('transactions')
+            .select('id, sms_message_id, sms_message_id_2')
+            .eq('user_id', userId)
+            .eq('dedupe_hash', dedupeHash)
+            .limit(1)
+            .maybeSingle()
+        : { data: null }
+
+      if (byReference.data) {
+        return await linkIntoExisting(
+          byReference.data,
+          'the same payment arrived on another channel',
+          result.template.id,
+        )
+      }
+
+      const { data: bySelf } = await db
         .from('transactions')
         .select('id, sms_message_id, sms_message_id_2')
         .eq('user_id', userId)
-        .eq('dedupe_hash', dedupeHash)
+        .eq('sms_message_id', messageId)
+        .eq('type', txType)
+        .eq('amount', fields.amount)
+        .neq('status', 'void')
         .limit(1)
         .maybeSingle()
 
-      if (winner) {
+      if (bySelf) {
         return await linkIntoExisting(
-          winner,
-          'the same payment arrived on another channel',
+          bySelf,
+          'this message was already booked by a concurrent run',
           result.template.id,
         )
       }
