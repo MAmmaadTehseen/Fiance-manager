@@ -3,6 +3,7 @@ import { AppState } from 'react-native'
 import Constants from 'expo-constants'
 import * as Updates from 'expo-updates'
 import { isNewer } from '@batwa/core'
+import { versionManifestUrl } from './env'
 
 /**
  * Two kinds of "out of date", and they are not interchangeable.
@@ -16,8 +17,6 @@ import { isNewer } from '@batwa/core'
  *
  * This covers the second case, which expo-updates deliberately cannot.
  */
-
-const VERSION_MANIFEST = 'https://batwa.online/app-version.json'
 
 type NativeUpdate = {
   version: string
@@ -33,7 +32,7 @@ export function useAppUpdate() {
     try {
       // cache: no-store, or a stale CDN copy hides the very release this
       // exists to announce.
-      const res = await fetch(VERSION_MANIFEST, { cache: 'no-store' })
+      const res = await fetch(versionManifestUrl, { cache: 'no-store' })
       if (!res.ok) return
       const manifest = (await res.json()) as { android?: NativeUpdate }
       const latest = manifest.android

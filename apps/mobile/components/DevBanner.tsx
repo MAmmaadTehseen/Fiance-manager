@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from '../lib/useTheme'
-import { isProductionBuild } from '../lib/supabase'
+import { isProductionBuild } from '../lib/env'
 
 /**
  * A standing marker that this build is not production — the mobile twin of
