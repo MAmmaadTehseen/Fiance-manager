@@ -3,20 +3,6 @@
 Open work, roughly in priority order. Each item says what is missing and why it
 matters, so it can be picked up cold.
 
-## 1. Flip the dev project's production branch to `develop`
-
-The dev environment is built and live (see Done), but one setting can't be set
-through Vercel's REST API: the `batwa-dev` project still has its **production
-branch = `master`**, so a push to `develop` currently makes a *preview*
-deployment rather than updating `dev.batwa.online`.
-
-One-time fix, ~10 seconds in the dashboard:
-
-- Vercel → **batwa-dev** → Settings → Git → **Production Branch** → `develop` → Save
-
-Until then, `dev.batwa.online` can be refreshed by redeploying `develop`
-manually (the initial deploy was triggered that way).
-
 ## Also tracked
 
 - **Domain renewal.** `batwa.online` renews around Aug 2027 at roughly $30–40 —
@@ -25,6 +11,11 @@ manually (the initial deploy was triggered that way).
 
 ## Done
 
+- **The dev project's production branch is `develop`** (Aug 2026). `batwa-dev`
+  now builds `develop` as its production target, so a push to `develop` updates
+  `dev.batwa.online` directly — `master` builds land as previews. Verified
+  against the Vercel API: the recent `develop` deploys carry
+  `target: production`, and both `dev.batwa.online` and `batwa.online` serve.
 - **Dev environment stood up** (Aug 2026). Separate Supabase project
   `batwa-dev` (`edaxpqeszssgmlfpsyrn`, ap-southeast-2) with all 12 migrations,
   both Edge Functions, and its auth allow-list set to `dev.batwa.online`. A

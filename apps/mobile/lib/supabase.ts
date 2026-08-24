@@ -23,6 +23,16 @@ if (!url || !anonKey) {
 
 export const supabaseUrl = url
 
+/**
+ * Whether this build talks to the production database.
+ *
+ * Computed in app.config.ts from the Supabase URL and carried through `extra`,
+ * so the app, its package name and its on-screen marker all agree about which
+ * environment this is. Defaults to `false` when absent: an unknown build is
+ * treated as dev, never as production.
+ */
+export const isProductionBuild = extra.isProduction === true
+
 export function bootSupabase() {
   return initSupabase({
     url,

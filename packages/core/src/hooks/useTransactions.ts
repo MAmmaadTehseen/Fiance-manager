@@ -16,6 +16,9 @@ export type TransactionRow = Transaction & {
   merchant: { id: string; display_name: string } | null
 }
 
+/** How many rows to scan when a text search is active. See `useTransactions`. */
+const SEARCH_WINDOW = 1000
+
 const ROW_SELECT = `
   *,
   account:accounts!transactions_account_id_fkey (id, name, type),
@@ -35,6 +38,28 @@ export type TransactionFilters = {
   limit?: number
 }
 
+/**
+ * Does a row match a free-text query?
+ *
+ * Searching only the `note` column would miss most of the ledger, because an
+ * ingested transaction carries its payee in `merchant`, not in a note the user
+ * never wrote. So the haystack is everything a person can actually see on the
+ * row — merchant, note, category, account names — plus the bare amount, which
+ * is how you find "that 4500 thing" when you remember the figure and nothing
+ * else. Matching is case-insensitive and substring, so "kfc" finds "KFC I-8".
+ */
+function matchesSearch(t: TransactionRow, query: string): boolean {
+  const haystack = [
+    t.merchant?.display_name,
+    t.note,
+    t.category?.name,
+    t.account?.name,
+    t.counterparty_account?.name,
+    String(t.amount),
+  ]
+  return haystack.some((v) => v != null && v.toLowerCase().includes(query))
+}
+
 export const transactionKeys = {
   all: ['transactions'] as const,
   list: (f: TransactionFilters) => ['transactions', 'list', f] as const,
@@ -44,12 +69,20 @@ export function useTransactions(filters: TransactionFilters = {}) {
   return useQuery({
     queryKey: transactionKeys.list(filters),
     queryFn: async (): Promise<TransactionRow[]> => {
+      const query = filters.search?.trim().toLowerCase() ?? ''
+      const limit = filters.limit ?? 100
+
       let q = getSupabase()
         .from('transactions')
         .select(ROW_SELECT)
         .neq('status', 'void')
         .order('occurred_at', { ascending: false })
-        .limit(filters.limit ?? 100)
+        // Search runs in memory (it spans joined names, which PostgREST cannot
+        // filter on without turning the joins inner and dropping rows that have
+        // no merchant). So when searching, pull a wider window first and let the
+        // filter below narrow it — otherwise a match just past `limit` would be
+        // invisible.
+        .limit(query ? Math.max(limit, SEARCH_WINDOW) : limit)
 
       if (filters.accountId) {
         // A transfer belongs to both of its accounts.
@@ -62,11 +95,13 @@ export function useTransactions(filters: TransactionFilters = {}) {
       if (filters.status) q = q.eq('status', filters.status)
       if (filters.from) q = q.gte('occurred_at', filters.from)
       if (filters.to) q = q.lte('occurred_at', filters.to)
-      if (filters.search) q = q.ilike('note', `%${filters.search}%`)
 
       const { data, error } = await q.returns<TransactionRow[]>()
       if (error) throw error
-      return data ?? []
+
+      const rows = data ?? []
+      if (!query) return rows
+      return rows.filter((t) => matchesSearch(t, query)).slice(0, limit)
     },
   })
 }
