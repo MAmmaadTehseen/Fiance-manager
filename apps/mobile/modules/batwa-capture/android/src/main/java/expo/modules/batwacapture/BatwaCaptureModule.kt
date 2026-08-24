@@ -61,6 +61,44 @@ class BatwaCaptureModule : Module() {
             )
         }
 
+        /**
+         * Apps seen posting a money alert that the user has not approved.
+         *
+         * Package name and label only — the listener never stores what an
+         * unapproved app said.
+         */
+        Function("captureCandidates") {
+            val out = mutableListOf<Map<String, Any?>>()
+            val items = CaptureStore.candidates(context)
+            for (i in 0 until items.length()) {
+                val item = items.optJSONObject(i) ?: continue
+                out.add(
+                    mapOf(
+                        "package" to item.optString("package"),
+                        "label" to item.optString("label"),
+                        "seenAt" to item.optLong("seenAt"),
+                    ),
+                )
+            }
+            out
+        }
+
+        /** Packages currently captured from, beyond the default SMS app. */
+        Function("allowedPackages") {
+            CaptureStore.allowedPackages(context).toList()
+        }
+
+        /** Start capturing this app's notifications. */
+        Function("allowPackage") { packageName: String ->
+            CaptureStore.allowPackage(context, packageName)
+        }
+
+        /** Stop capturing it, and stop offering it. */
+        Function("denyPackage") { packageName: String ->
+            CaptureStore.denyPackage(context, packageName)
+            CaptureStore.removeCandidate(context, packageName)
+        }
+
         /** "Send now" — used after granting permissions, or to prove it works. */
         Function("flushNow") {
             UploadWorker.scheduleNow(context)

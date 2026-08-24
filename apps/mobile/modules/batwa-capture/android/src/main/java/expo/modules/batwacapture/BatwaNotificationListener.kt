@@ -33,6 +33,11 @@ import android.service.notification.StatusBarNotification
  *     real originating address and SMSC timestamp — and it wins simply by
  *     usually arriving first.
  */
+private val MONEY = Regex(
+    """(?:PKR|Rs\.?)\s*[\d,]+(?:\.\d{1,2})?|[\d,]+(?:\.\d{1,2})?\s*(?:PKR|Rs\.?)""",
+    RegexOption.IGNORE_CASE,
+)
+
 class BatwaNotificationListener : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
@@ -51,14 +56,20 @@ class BatwaNotificationListener : NotificationListenerService() {
         // properly.
         val packageName = sbn.packageName ?: return
 
-        // Only the default SMS app. Everything else — chats, email, media —
-        // is private noise that must never leave the device.
+        // Two kinds of app may be read, and nothing else. Chats, email and
+        // media are private noise that must never leave the device.
+        //
+        //  - the default SMS app, always: its notifications ARE the bank SMS
+        //  - any app the user has explicitly approved, for wallets like
+        //    SadaPay and JazzCash that push from their own app and send no
+        //    email at all, so a notification is the only signal there is
         val defaultSmsPackage = try {
             Telephony.Sms.getDefaultSmsPackage(applicationContext)
         } catch (t: Throwable) {
             null
         }
-        if (defaultSmsPackage == null || packageName != defaultSmsPackage) return
+        val isSmsApp = defaultSmsPackage != null && packageName == defaultSmsPackage
+        val isApproved = CaptureStore.isAllowedPackage(applicationContext, packageName)
 
         val notification = sbn.notification ?: return
 
@@ -83,10 +94,49 @@ class BatwaNotificationListener : NotificationListenerService() {
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim()
         val sender = if (!title.isNullOrBlank()) title else packageName
 
+        // An app the user has not approved gets remembered, never uploaded.
+        //
+        // Guessing wallet package names in a shipped list fails silently when
+        // one is wrong, and enumerating installed apps needs QUERY_ALL_PACKAGES
+        // — itself restricted on Play. So the app is noticed only when it
+        // actually posts something transaction-shaped, and Settings asks. Only
+        // the package name and the app's own label are stored; the text that
+        // triggered it is dropped here and never persisted or sent.
+        if (!isSmsApp && !isApproved) {
+            if (looksTransactional(body)) {
+                CaptureStore.recordCandidate(
+                    applicationContext,
+                    packageName,
+                    appLabel(packageName),
+                )
+            }
+            return
+        }
+
         val postedAt = sbn.postTime.takeIf { it > 0 } ?: System.currentTimeMillis()
 
         CaptureStore.enqueue(applicationContext, sender, body, postedAt)
         UploadWorker.schedule(applicationContext)
+    }
+
+    /**
+     * Does this read like a money alert?
+     *
+     * Only used to decide whether an unapproved app is worth ASKING about, so
+     * it is deliberately loose — a false positive costs one line in Settings
+     * that the user ignores, while a false negative means their wallet is
+     * never offered at all. Requires a currency marker next to a number, which
+     * a chat message or a delivery update will not have.
+     */
+    private fun looksTransactional(body: String): Boolean =
+        MONEY.containsMatchIn(body)
+
+    /** The app's own name, so Settings can name it rather than show a package. */
+    private fun appLabel(packageName: String): String = try {
+        val pm = applicationContext.packageManager
+        pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
+    } catch (t: Throwable) {
+        packageName
     }
 
     override fun onListenerConnected() {

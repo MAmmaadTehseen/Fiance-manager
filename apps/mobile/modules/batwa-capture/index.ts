@@ -7,4 +7,4 @@
  * almost always dead and there is no JS runtime to deliver anything to.
  */
 export { default as BatwaCapture } from './src/BatwaCaptureModule'
-export type { CaptureStatus } from './src/BatwaCapture.types'
+export type { CaptureCandidate, CaptureStatus } from './src/BatwaCapture.types'

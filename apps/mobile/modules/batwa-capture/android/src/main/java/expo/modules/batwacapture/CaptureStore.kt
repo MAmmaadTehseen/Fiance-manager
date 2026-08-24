@@ -32,6 +32,21 @@ object CaptureStore {
     private const val KEY_LAST_ERROR = "last_error"
     private const val KEY_LAST_SENT_AT = "last_sent_at"
 
+    /** Packages the user has approved for notification capture. */
+    private const val KEY_ALLOWED_PACKAGES = "allowed_packages"
+
+    /**
+     * Apps seen posting transaction-shaped alerts but not yet approved.
+     *
+     * Only the package name and the app's own label are kept — never the
+     * notification text. A wallet the user has not opted into must leave no
+     * trace of what it said, on the device or anywhere else.
+     */
+    private const val KEY_CANDIDATES = "capture_candidates"
+
+    /** Enough to surface every wallet on a phone without growing forever. */
+    private const val MAX_CANDIDATES = 20
+
     /** Stops a misbehaving sender from growing the queue without bound. */
     private const val MAX_QUEUED = 500
 
@@ -105,6 +120,65 @@ object CaptureStore {
             .putLong(KEY_LAST_SENT_AT, System.currentTimeMillis())
             .remove(KEY_LAST_ERROR)
             .commit()
+    }
+
+    // ------------------------------------------------------- notification apps
+
+    fun allowedPackages(context: Context): Set<String> =
+        prefs(context).getStringSet(KEY_ALLOWED_PACKAGES, emptySet()) ?: emptySet()
+
+    fun isAllowedPackage(context: Context, packageName: String): Boolean =
+        allowedPackages(context).contains(packageName)
+
+    @Synchronized
+    fun allowPackage(context: Context, packageName: String) {
+        val next = allowedPackages(context).toMutableSet().apply { add(packageName) }
+        // Approving an app answers the question the candidate was asking, so
+        // the prompt should not keep being offered.
+        removeCandidate(context, packageName)
+        prefs(context).edit().putStringSet(KEY_ALLOWED_PACKAGES, next).apply()
+    }
+
+    @Synchronized
+    fun denyPackage(context: Context, packageName: String) {
+        val next = allowedPackages(context).toMutableSet().apply { remove(packageName) }
+        prefs(context).edit().putStringSet(KEY_ALLOWED_PACKAGES, next).apply()
+    }
+
+    /** Package names and labels only — see KEY_CANDIDATES. */
+    fun candidates(context: Context): JSONArray =
+        try {
+            JSONArray(prefs(context).getString(KEY_CANDIDATES, "[]") ?: "[]")
+        } catch (t: Throwable) {
+            JSONArray()
+        }
+
+    @Synchronized
+    fun recordCandidate(context: Context, packageName: String, label: String) {
+        val existing = candidates(context)
+        for (i in 0 until existing.length()) {
+            if (existing.optJSONObject(i)?.optString("package") == packageName) return
+        }
+        if (existing.length() >= MAX_CANDIDATES) return
+
+        existing.put(
+            JSONObject()
+                .put("package", packageName)
+                .put("label", label)
+                .put("seenAt", System.currentTimeMillis()),
+        )
+        prefs(context).edit().putString(KEY_CANDIDATES, existing.toString()).apply()
+    }
+
+    @Synchronized
+    fun removeCandidate(context: Context, packageName: String) {
+        val existing = candidates(context)
+        val kept = JSONArray()
+        for (i in 0 until existing.length()) {
+            val item = existing.optJSONObject(i) ?: continue
+            if (item.optString("package") != packageName) kept.put(item)
+        }
+        prefs(context).edit().putString(KEY_CANDIDATES, kept.toString()).apply()
     }
 
     fun recordError(context: Context, message: String) {

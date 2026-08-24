@@ -19,7 +19,11 @@ import {
   smsIngestUrl,
 } from '@batwa/core'
 
-import { BatwaCapture, type CaptureStatus } from '../modules/batwa-capture'
+import {
+  BatwaCapture,
+  type CaptureCandidate,
+  type CaptureStatus,
+} from '../modules/batwa-capture'
 import type { Colors } from '../lib/theme'
 import { useColors } from '../lib/useTheme'
 import { useAppUpdate, useOtaUpdate } from '../lib/appUpdate'
@@ -109,6 +113,8 @@ export default function Capture() {
   const ota = useOtaUpdate()
 
   const [status, setStatus] = useState<CaptureStatus | null>(null)
+  const [candidates, setCandidates] = useState<CaptureCandidate[]>([])
+  const [allowed, setAllowed] = useState<string[]>([])
   const [smsGranted, setSmsGranted] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -116,6 +122,8 @@ export default function Capture() {
   const refresh = useCallback(async () => {
     try {
       setStatus(BatwaCapture.getStatus())
+      setCandidates(BatwaCapture.captureCandidates())
+      setAllowed(BatwaCapture.allowedPackages())
       if (Platform.OS === 'android') {
         setSmsGranted(
           await PermissionsAndroid.check(
@@ -394,6 +402,87 @@ export default function Capture() {
             label={status?.notificationAccess ? 'Notification settings' : 'Turn on notification access'}
             onPress={() => BatwaCapture.openNotificationAccessSettings()}
           />
+
+          {/* Wallets that push from their own app rather than texting. Listed
+              only once one has actually posted a money alert, so this stays
+              empty rather than guessing at package names. */}
+          {candidates.length > 0 ? (
+            <View style={{ gap: 8 }}>
+              <Text style={{ fontSize: 14, color: colors.ink, lineHeight: 20 }}>
+                {candidates.length === 1
+                  ? 'This app posted a transaction alert. Capture from it?'
+                  : 'These apps posted transaction alerts. Capture from them?'}
+              </Text>
+              {candidates.map((candidate) => (
+                <View
+                  key={candidate.package}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 10,
+                  }}
+                >
+                  <Text
+                    numberOfLines={1}
+                    style={{ flex: 1, fontSize: 14, color: colors.ink }}
+                  >
+                    {candidate.label}
+                  </Text>
+                  <Button
+                    colors={colors}
+                    tone="quiet"
+                    label="No"
+                    onPress={() => {
+                      BatwaCapture.denyPackage(candidate.package)
+                      void refresh()
+                    }}
+                  />
+                  <Button
+                    colors={colors}
+                    label="Capture"
+                    onPress={() => {
+                      BatwaCapture.allowPackage(candidate.package)
+                      void refresh()
+                    }}
+                  />
+                </View>
+              ))}
+              <Text style={{ fontSize: 12, color: colors.sub, lineHeight: 17 }}>
+                Until you say yes, Batwa keeps only the app&rsquo;s name — never
+                what the alert said.
+              </Text>
+            </View>
+          ) : null}
+
+          {allowed.length > 0 ? (
+            <View style={{ gap: 8 }}>
+              <Text style={{ fontSize: 14, color: colors.sub, lineHeight: 20 }}>
+                Also capturing from:
+              </Text>
+              {allowed.map((packageName) => (
+                <View
+                  key={packageName}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                >
+                  <Text
+                    numberOfLines={1}
+                    style={{ flex: 1, fontSize: 14, color: colors.ink }}
+                  >
+                    {packageName}
+                  </Text>
+                  <Button
+                    colors={colors}
+                    tone="quiet"
+                    label="Stop"
+                    onPress={() => {
+                      BatwaCapture.denyPackage(packageName)
+                      void refresh()
+                    }}
+                  />
+                </View>
+              ))}
+            </View>
+          ) : null}
 
           <Text style={{ fontSize: 14, color: colors.sub, lineHeight: 20 }}>
             Battery optimisation will stop Batwa forwarding in the background.
