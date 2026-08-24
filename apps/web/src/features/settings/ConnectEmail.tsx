@@ -63,6 +63,14 @@ export function ConnectEmail() {
           its own — no SMS, no forwarding to set up. Works on any phone,
           including iPhone.
         </p>
+        {/* Said plainly here because the alternative is someone connecting
+            Gmail, seeing nothing from their wallet, and assuming Batwa is
+            broken. */}
+        <p className="mt-1 text-sm text-muted-foreground">
+          Banks that email — Meezan, Faysal and the like — file themselves this
+          way. Wallets like SadaPay and JazzCash don&rsquo;t send email at all;
+          those only arrive by SMS, which needs the Android app.
+        </p>
       </div>
 
       {flash === 'connected' && (
