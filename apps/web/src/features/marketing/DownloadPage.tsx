@@ -21,7 +21,7 @@ import { isProductionDeploy } from '@/lib/env'
 // then installed over the real app instead of beside it.
 const ANDROID_BUILD_URL = isProductionDeploy
   ? 'https://expo.dev/artifacts/eas/RWw1ELuaX5DW2kiH6Yvx7As7srXn5_3eiDXBTE5PT9o.apk'
-  : 'https://expo.dev/artifacts/eas/rQ4z_szqTzAfyPIbewa9jWh3VDOgYctTb3u7qWpbljA.apk'
+  : 'https://expo.dev/artifacts/eas/NnYhatyMcQS09qlqlRTXWs9CAzolUiGtG9sXErTTyfU.apk'
 
 const STEPS = [
   {
