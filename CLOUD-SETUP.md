@@ -97,15 +97,30 @@ identity — `app.config.ts` reads `EXPO_PUBLIC_SUPABASE_URL` and derives the
 name, the Android package and the on-screen DEV banner from it. So a build
 cannot quietly point at prod while looking like a dev build.
 
-| Profile | Database | App name | Android package |
-| --- | --- | --- | --- |
-| `development`, `preview` | dev (`edaxpqeszssgmlfpsyrn`) | Batwa Dev | `online.batwa.app.dev` |
-| `production` | prod (`byjytsoeayopmcaabgyj`) | Batwa | `online.batwa.app` |
+| Profile | Database | App name | Android package | Output |
+| --- | --- | --- | --- | --- |
+| `development`, `preview` | dev (`edaxpqeszssgmlfpsyrn`) | Batwa Dev | `online.batwa.app.dev` | APK |
+| `production` | prod (`byjytsoeayopmcaabgyj`) | Batwa | `online.batwa.app` | APK |
+| `production-store` | prod | Batwa | `online.batwa.app` | AAB |
+
+**`production` is the release build.** Batwa is distributed outside the Play
+Store, so a release is an APK people sideload from `/download` — that is what
+`production` now emits. `production-store` exists for the day there is a Play
+listing; an AAB cannot be sideloaded, so it is not the release path today.
+Both extend `production-base`, which holds the prod credentials.
+
+Historically every build used `preview`, which pointed at the prod database —
+so `preview` *was* the release channel. It is dev now, and `production` has
+taken over that job. Rebuilding a release means
+`eas build --profile production`, not `preview`.
 
 Dev credentials are the `base` profile, so a new profile that forgets to set
 `env` inherits the dev database rather than the real ledger. Separate package
 names mean both apps install side by side instead of overwriting each other —
 `eas build --profile preview` will not replace the app you actually use.
+
+`/download` serves a different APK per deploy (`DownloadPage.tsx` picks by
+`isProductionDeploy`), so bump the matching URL there after a release build.
 
 ## Project refs (not secret)
 

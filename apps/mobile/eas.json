@@ -27,13 +27,22 @@
         "buildType": "apk"
       }
     },
-    "production": {
-      "extends": "base",
+    "production-base": {
       "channel": "production",
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://byjytsoeayopmcaabgyj.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_3Ylq92PI0XTePhNgiZWy4Q_-UFd8T0r"
-      },
+      }
+    },
+    "production": {
+      "extends": "production-base",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production-store": {
+      "extends": "production-base",
       "android": {
         "buildType": "app-bundle"
       }

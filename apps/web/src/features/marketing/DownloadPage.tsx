@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { ArrowLeft, Moon, Sun, Smartphone, ShieldCheck, Bell } from 'lucide-react'
 import { BatwaLogo, BatwaWordmark } from '@/components/BatwaLogo'
 import { useTheme } from '@/lib/theme'
+import { isProductionDeploy } from '@/lib/env'
 
 /**
  * One stable address to share.
@@ -13,8 +14,14 @@ import { useTheme } from '@/lib/theme'
 
 // Updated on each release. The app compares its version against
 // public/app-version.json and links here when a new build exists.
-const ANDROID_BUILD_URL =
-  'https://expo.dev/artifacts/eas/RWw1ELuaX5DW2kiH6Yvx7As7srXn5_3eiDXBTE5PT9o.apk'
+//
+// Two builds, because the same page is served by both deploys and they are not
+// interchangeable: different Android packages talking to different databases.
+// A single link meant dev.batwa.online handed out the production APK, which
+// then installed over the real app instead of beside it.
+const ANDROID_BUILD_URL = isProductionDeploy
+  ? 'https://expo.dev/artifacts/eas/RWw1ELuaX5DW2kiH6Yvx7As7srXn5_3eiDXBTE5PT9o.apk'
+  : 'https://expo.dev/artifacts/eas/rQ4z_szqTzAfyPIbewa9jWh3VDOgYctTb3u7qWpbljA.apk'
 
 const STEPS = [
   {
