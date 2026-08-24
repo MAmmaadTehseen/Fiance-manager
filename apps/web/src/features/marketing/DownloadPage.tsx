@@ -113,7 +113,10 @@ export function DownloadPage() {
             iOS has no way for any app to read SMS, so automatic capture is
             Android-only — that&rsquo;s Apple&rsquo;s rule, not ours. Open{' '}
             <Link to="/" className="font-semibold">
-              batwa.online
+              {/* The link is relative and always right; only the label was
+                  hard-coded, so on dev it read "batwa.online" while pointing
+                  somewhere else. */}
+              {typeof window === 'undefined' ? 'batwa.online' : window.location.host}
             </Link>{' '}
             in Safari and add it to your home screen: you get the whole app,
             and add cash spending by hand.

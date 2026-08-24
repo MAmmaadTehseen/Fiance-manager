@@ -13,6 +13,7 @@ import { router } from 'expo-router'
 import { getSupabase } from '@batwa/core'
 
 import { useColors } from '../lib/useTheme'
+import { webOrigin } from '../lib/env'
 
 export default function SignIn() {
   const colors = useColors()
@@ -132,7 +133,8 @@ export default function SignIn() {
         </Pressable>
 
         <Text style={{ fontSize: 13, color: colors.sub, textAlign: 'center' }}>
-          No account yet? Create one at batwa.online, then sign in here.
+          No account yet? Create one at {webOrigin.replace('https://', '')},
+          then sign in here.
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>

@@ -3,7 +3,7 @@ import { AppState } from 'react-native'
 import Constants from 'expo-constants'
 import * as Updates from 'expo-updates'
 import { isNewer } from '@batwa/core'
-import { versionManifestUrl } from './env'
+import { isProductionBuild, versionManifestUrl } from './env'
 
 /**
  * Two kinds of "out of date", and they are not interchangeable.
@@ -16,6 +16,12 @@ import { versionManifestUrl } from './env'
  *    build forever and wonders why a feature never arrived.
  *
  * This covers the second case, which expo-updates deliberately cannot.
+ *
+ * Production only. The prompt exists to send a real user to the download page
+ * for a fresh APK, and only production is distributed that way — dev builds are
+ * installed from EAS by hand. Worse, since dev and prod are separate Android
+ * packages, following production's download link from the dev app would install
+ * over the real app rather than update the dev one.
  */
 
 type NativeUpdate = {
@@ -29,6 +35,7 @@ export function useAppUpdate() {
   const [nativeUpdate, setNativeUpdate] = useState<NativeUpdate | null>(null)
 
   const check = useCallback(async () => {
+    if (!isProductionBuild) return
     try {
       // cache: no-store, or a stale CDN copy hides the very release this
       // exists to announce.

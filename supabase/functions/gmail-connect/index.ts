@@ -24,7 +24,18 @@ const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/gmail-connect/callback`
 // openid+email so the id_token tells us which mailbox was connected; gmail
 // readonly is the working scope; offline access is what yields a refresh token.
 const SCOPE = 'openid email https://www.googleapis.com/auth/gmail.readonly'
-const DEFAULT_APP = 'https://batwa.online'
+/**
+ * Where to send the user back when the caller supplies no redirect.
+ *
+ * Derived from the project this function is deployed to, so the dev deployment
+ * cannot bounce someone into production — a different database, where the
+ * session they started with does not exist. The web app always passes its own
+ * origin; this only covers a caller that does not.
+ */
+const PROD_SUPABASE_REF = 'byjytsoeayopmcaabgyj'
+const DEFAULT_APP = SUPABASE_URL.includes(PROD_SUPABASE_REF)
+  ? 'https://batwa.online'
+  : 'https://dev.batwa.online'
 const STATE_TTL_MS = 10 * 60 * 1000
 
 const CORS = {

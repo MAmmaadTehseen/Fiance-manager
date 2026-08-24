@@ -16,13 +16,15 @@ const extra = Constants.expoConfig?.extra ?? {}
 export const isProductionBuild = extra.isProduction === true
 
 /**
- * Where this build looks for news of a newer APK.
+ * The web app that pairs with this build.
  *
- * It must match the build's own environment. Pointed at production, the dev app
- * would announce production's releases and hand the user production's download
- * link — which, since the two now carry different Android packages, would
- * install over the real app rather than update the dev one.
+ * Sign-up happens on the web, and an account created on the wrong one simply
+ * will not exist in this build's database — the two environments have separate
+ * user tables. So the link a dev build shows has to be the dev site.
  */
-export const versionManifestUrl = isProductionBuild
-  ? 'https://batwa.online/app-version.json'
-  : 'https://dev.batwa.online/app-version.json'
+export const webOrigin = isProductionBuild
+  ? 'https://batwa.online'
+  : 'https://dev.batwa.online'
+
+/** Where production looks for news of a newer APK. See `useAppUpdate`. */
+export const versionManifestUrl = 'https://batwa.online/app-version.json'
