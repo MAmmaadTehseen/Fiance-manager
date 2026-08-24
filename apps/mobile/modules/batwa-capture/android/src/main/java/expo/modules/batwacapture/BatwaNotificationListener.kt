@@ -1,16 +1,15 @@
 package expo.modules.batwacapture
 
-import android.Manifest
 import android.app.Notification
-import android.content.pm.PackageManager
 import android.provider.Telephony
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 
 /**
- * Fallback capture path for when SMS permission is refused — reading the
+ * Second capture path, running alongside SmsReceiver — reading the
  * notification the user's SMS app posts is not covered by Google Play's
- * restricted SMS/Call Log policy, which is what keeps a store build viable.
+ * restricted SMS/Call Log policy, which is what keeps a store build viable
+ * even where RECEIVE_SMS is refused.
  *
  * Deliberately narrow, for two reasons the first draft got wrong:
  *
@@ -20,24 +19,36 @@ import android.service.notification.StatusBarNotification
  *     junk. Only the DEFAULT SMS APP's notifications are captured — that is
  *     the one package whose notifications are SMS.
  *
- *  2. DUPLICATION. When RECEIVE_SMS is granted, SmsReceiver already owns
- *     this path with better data (real originating address, SMSC timestamp).
- *     The notification copy differs in title and postTime, so it slips every
- *     minute-bucketed dedupe layer and double-books the transaction. So when
- *     the receiver can run, this listener stands down entirely.
+ *  2. DUPLICATION. The notification copy differs from the broadcast in title
+ *     and postTime, so it slips every minute-bucketed fingerprint. This used
+ *     to be handled by standing the listener down whenever RECEIVE_SMS was
+ *     granted, which threw away its real value: the broadcast is not
+ *     dependable, because OEM battery managers kill background receivers and
+ *     a bank SMS that never arrives leaves a hole nothing else fills.
+ *
+ *     Both paths now run, and the duplicate is resolved server-side where the
+ *     whole message is visible: an already-parsed message with the same body
+ *     inside the match window is the same event, whatever label each path put
+ *     on the sender. SmsReceiver still gives the better data when it fires —
+ *     real originating address and SMSC timestamp — and it wins simply by
+ *     usually arriving first.
  */
 class BatwaNotificationListener : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (!CaptureStore.isConfigured(applicationContext)) return
 
-        // SmsReceiver owns SMS whenever it is allowed to; two capture paths
-        // for one message means two transactions.
-        val smsGranted = applicationContext.checkSelfPermission(
-            Manifest.permission.RECEIVE_SMS,
-        ) == PackageManager.PERMISSION_GRANTED
-        if (smsGranted) return
-
+        // Both paths now run together, deliberately.
+        //
+        // This used to bail out whenever RECEIVE_SMS was granted, because two
+        // capture paths for one message meant two transactions. That is no
+        // longer true: the server matches an already-parsed message by body
+        // alone, so the same text arriving twice under different sender labels
+        // collapses into one row. Running both matters because the broadcast is
+        // not dependable — OEM battery managers kill background receivers, and
+        // a missed bank SMS is a hole in the ledger that nothing else fills.
+        // Belt and braces, with the duplicate handled where it can be handled
+        // properly.
         val packageName = sbn.packageName ?: return
 
         // Only the default SMS app. Everything else — chats, email, media —

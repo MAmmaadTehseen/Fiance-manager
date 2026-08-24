@@ -164,7 +164,7 @@ async function syncAccount(
         received_at: receivedAt,
         device_label: 'gmail',
       })
-      .select('id, sender, body, received_at')
+      .select('id, sender, body, received_at, device_label')
       .single()
 
     if (error) continue // 23505 duplicate → already filed on an earlier sync

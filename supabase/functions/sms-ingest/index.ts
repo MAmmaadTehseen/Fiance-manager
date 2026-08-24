@@ -198,7 +198,7 @@ async function handle(req: Request): Promise<Response> {
       received_at: receivedAt,
       device_label: payload.device ?? null,
     })
-    .select('id, sender, body, received_at')
+    .select('id, sender, body, received_at, device_label')
     .single()
 
   if (insertError) {

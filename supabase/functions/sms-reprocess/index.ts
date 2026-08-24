@@ -83,7 +83,7 @@ async function handle(req: Request): Promise<Response> {
   // filter is the thing stopping one user replaying another's messages.
   let query = db
     .from('sms_messages')
-    .select('id, sender, body, received_at')
+    .select('id, sender, body, received_at, device_label')
     .eq('user_id', userId)
     .order('received_at', { ascending: true })
     .limit(MAX_BATCH)

@@ -56,10 +56,16 @@ const config: ExpoConfig = {
     permissions: [
       // Manifest-registered receiver: fires even when the app is killed,
       // which is the normal state when a bank SMS lands.
+      //
+      // RECEIVE_SMS is a restricted permission on Google Play, so shipping
+      // there means filing the Permissions Declaration Form. Batwa applies
+      // under the "SMS-based money management (budget tracking)" permitted
+      // use, which is what this app is — not the device-automation exception
+      // that Tasker and MacroDroid ship under. Approval is case by case.
       'android.permission.RECEIVE_SMS',
       // READ_SMS is deliberately absent: nothing reads the SMS content
-      // provider (capture is broadcast-based), and requesting it trips Google
-      // Play's restricted-permission review for no benefit.
+      // provider (capture is broadcast-based). It is a second restricted
+      // permission to justify, for a capability the app does not use.
       'android.permission.INTERNET',
       // Lets the retry queue drain after a reboot.
       'android.permission.RECEIVE_BOOT_COMPLETED',

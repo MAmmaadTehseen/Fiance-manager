@@ -21,11 +21,46 @@ const DEDUPE_WINDOW_SECONDS = 90
  */
 const TRANSFER_MATCH_WINDOW_SECONDS = 600
 
+/**
+ * How far apart two channels may announce the same payment.
+ *
+ * An email alert can trail its SMS by minutes, and a Gmail sync only runs
+ * periodically — but `occurred_at` comes from the message body, not from when
+ * we saw it, so both channels describe the same instant and this only has to
+ * absorb the banks' own clock skew.
+ */
+const CHANNEL_MATCH_WINDOW_SECONDS = 900
+
+/**
+ * The bank's own reference, normalised into a dedupe key.
+ *
+ * This is the only identifier that survives the trip across channels: the SMS
+ * and the email for one payment share a reference but share almost no wording,
+ * so text fingerprints cannot see that they are the same event. Writing it to
+ * `dedupe_hash` puts the guarantee in the unique index rather than in a check
+ * that a concurrent insert could race past.
+ *
+ * Short values are rejected — a two-character capture from a loose pattern
+ * would collide across genuinely unrelated payments.
+ */
+function referenceKey(reference: string | null | undefined): string | null {
+  if (!reference) return null
+  const normalised = String(reference).toUpperCase().replace(/[^A-Z0-9]/g, '')
+  return normalised.length >= 5 ? `ref:${normalised}` : null
+}
+
 export type StoredMessage = {
   id: string
   sender: string
   body: string
   received_at: string
+  /**
+   * Which capture path stored this — the phone's label for SMS and for the
+   * notification listener, `gmail` for a synced email. Used to tell whether an
+   * existing transaction came from a different channel; see the cross-channel
+   * check below.
+   */
+  device_label?: string | null
 }
 
 export type PipelineResult = {
@@ -141,6 +176,49 @@ export async function processStoredMessage(
       })
       .eq('id', messageId)
     return result
+  }
+
+  const thisChannel = message.device_label ?? null
+
+  /**
+   * Record this message against a transaction another message already created.
+   *
+   * The second slot exists so both announcements of one payment stay attached
+   * to the row: a reprocess of either then finds it through the `mine` check
+   * rather than booking a second copy. When both slots are already taken the
+   * row is simply left alone — it is still the right answer, and overwriting a
+   * slot would orphan whichever message was there.
+   */
+  const linkIntoExisting = async (
+    existing: {
+      id: string
+      sms_message_id?: string | null
+      sms_message_id_2?: string | null
+    },
+    hint: string,
+    templateId: string,
+  ): Promise<PipelineResult> => {
+    if (!existing.sms_message_id) {
+      await db
+        .from('transactions')
+        .update({ sms_message_id: messageId })
+        .eq('id', existing.id)
+    } else if (!existing.sms_message_id_2) {
+      await db
+        .from('transactions')
+        .update({ sms_message_id_2: messageId })
+        .eq('id', existing.id)
+    }
+
+    return await finish(
+      { parse_status: 'duplicate', matched_template_id: templateId },
+      {
+        status: 'linked',
+        message_id: messageId,
+        transaction_id: existing.id,
+        hint,
+      },
+    )
   }
 
   const { data: templates } = await db
@@ -303,7 +381,15 @@ export async function processStoredMessage(
   // the minute, so a copy arriving in a different minute inserts as a fresh
   // sms_messages row and none of the checks below can see the first copy's
   // transaction. Catch it here: another already-parsed message with the same
-  // sender and body inside the transfer window is the same real-world event.
+  // body inside the transfer window is the same real-world event.
+  //
+  // Matched on body alone, not sender and body. The two capture paths label
+  // the sender differently for one message — the broadcast carries the
+  // originating address while a notification carries whatever the SMS app put
+  // in its title — so requiring both to agree let the second copy through and
+  // booked the payment twice. Identical body text is the stronger signal
+  // anyway: two distinct payments differ in amount, balance or reference, so
+  // a byte-identical body inside the window is always one event seen twice.
   {
     const rStart = new Date(at - TRANSFER_MATCH_WINDOW_SECONDS * 1000).toISOString()
     const rEnd = new Date(at + TRANSFER_MATCH_WINDOW_SECONDS * 1000).toISOString()
@@ -311,7 +397,6 @@ export async function processStoredMessage(
       .from('sms_messages')
       .select('id')
       .eq('user_id', userId)
-      .eq('sender', message.sender)
       .eq('body', message.body)
       .eq('parse_status', 'parsed')
       .neq('id', messageId)
@@ -436,6 +521,80 @@ export async function processStoredMessage(
     }
   }
 
+  // The same payment, announced by a different channel.
+  //
+  // The checks above cannot see this one. `body_hash` and the body match need
+  // identical text, and an email alert shares none of its SMS's wording; the
+  // twin check below only considers rows a human or a recurring rule created,
+  // never one another message already booked. So without this, turning on a
+  // second channel books every payment twice.
+  //
+  // The bank's reference is what ties them together. It is written to
+  // `dedupe_hash` on insert, so this lookup is an index probe — and the unique
+  // index behind it is what actually guarantees the invariant when two
+  // channels arrive at once.
+  const dedupeHash = referenceKey(fields.reference)
+
+  if (dedupeHash) {
+    const { data: sameRef } = await db
+      .from('transactions')
+      .select('id, sms_message_id, sms_message_id_2')
+      .eq('user_id', userId)
+      .eq('dedupe_hash', dedupeHash)
+      .limit(1)
+      .maybeSingle()
+
+    if (sameRef) {
+      return await linkIntoExisting(
+        sameRef,
+        'the same payment arrived on another channel',
+        result.template.id,
+      )
+    }
+  }
+
+  // No reference to match on — some wallets send none. Fall back to the shape
+  // of the payment, but only accept a candidate that a DIFFERENT channel
+  // recorded: two identical amounts on one account within the window are
+  // usually a genuine pair (a split payment, a retried top-up), and merging
+  // those would silently lose money from the ledger. Requiring the other row
+  // to have come from another device_label means we only merge when two
+  // sources are describing one event, which is exactly the case this exists
+  // for.
+  if (!dedupeHash) {
+    const cStart = new Date(at - CHANNEL_MATCH_WINDOW_SECONDS * 1000).toISOString()
+    const cEnd = new Date(at + CHANNEL_MATCH_WINDOW_SECONDS * 1000).toISOString()
+
+    const { data: candidates } = await db
+      .from('transactions')
+      .select('id, sms_message_id, sms_message_id_2')
+      .eq('user_id', userId)
+      .eq('account_id', sourceId)
+      .eq('type', txType)
+      .eq('amount', fields.amount)
+      .not('sms_message_id', 'is', null)
+      .gte('occurred_at', cStart)
+      .lte('occurred_at', cEnd)
+      .order('occurred_at', { ascending: true })
+      .limit(5)
+
+    for (const candidate of candidates ?? []) {
+      const { data: creator } = await db
+        .from('sms_messages')
+        .select('device_label')
+        .eq('id', candidate.sms_message_id!)
+        .maybeSingle()
+
+      if (creator && (creator.device_label ?? null) !== (thisChannel ?? null)) {
+        return await linkIntoExisting(
+          candidate,
+          'the same payment was already reported by another channel',
+          result.template.id,
+        )
+      }
+    }
+  }
+
   // The same payment already entered by hand, or by a posted recurring rule.
   const windowStart = new Date(at - DEDUPE_WINDOW_SECONDS * 1000).toISOString()
   const windowEnd = new Date(at + DEDUPE_WINDOW_SECONDS * 1000).toISOString()
@@ -497,11 +656,38 @@ export async function processStoredMessage(
       status,
       confidence: knowsCategory ? 0.95 : 0.6,
       sms_message_id: messageId,
+      // The unique partial index on (user_id, dedupe_hash) is what actually
+      // guarantees one row per bank reference. The lookup above is the fast
+      // path; this is the one that holds when two channels land at once.
+      dedupe_hash: dedupeHash,
     })
     .select('id')
     .single()
 
   if (txError) {
+    // The other channel won the race. Between the lookup above and this insert
+    // its message booked the same reference, and the unique index rejected the
+    // duplicate — which is the index doing its job, not a failure. Attach this
+    // message to the row that won instead of reporting an error the user would
+    // see as a lost transaction.
+    if (txError.code === '23505' && dedupeHash) {
+      const { data: winner } = await db
+        .from('transactions')
+        .select('id, sms_message_id, sms_message_id_2')
+        .eq('user_id', userId)
+        .eq('dedupe_hash', dedupeHash)
+        .limit(1)
+        .maybeSingle()
+
+      if (winner) {
+        return await linkIntoExisting(
+          winner,
+          'the same payment arrived on another channel',
+          result.template.id,
+        )
+      }
+    }
+
     return await finish(
       { parse_status: 'unmatched', error: txError.message },
       { status: 'error', message_id: messageId, error: txError.message },
