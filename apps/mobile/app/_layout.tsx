@@ -15,6 +15,7 @@ import { getSupabase } from '@batwa/core'
 import { bootSupabase } from '../lib/supabase'
 import { SessionContext } from '../lib/session'
 import { ThemeProvider, useTheme } from '../lib/useTheme'
+import { DevBanner } from '../components/DevBanner'
 
 bootSupabase()
 
@@ -47,6 +48,8 @@ function ThemedStack() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="capture" options={{ title: 'Connect this phone' }} />
       </Stack>
+      {/* Last child so it floats above every screen in the stack. */}
+      <DevBanner />
     </>
   )
 }

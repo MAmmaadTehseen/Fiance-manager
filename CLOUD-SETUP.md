@@ -90,6 +90,23 @@ npx supabase functions deploy <fn> --project-ref edaxpqeszssgmlfpsyrn   # dev
 EXPO_TOKEN="$EXPO_TOKEN" npx eas-cli update --branch preview --environment preview -m "msg"
 ```
 
+## Mobile: which build talks to which database
+
+The EAS profile decides the database, and the database decides the app's
+identity — `app.config.ts` reads `EXPO_PUBLIC_SUPABASE_URL` and derives the
+name, the Android package and the on-screen DEV banner from it. So a build
+cannot quietly point at prod while looking like a dev build.
+
+| Profile | Database | App name | Android package |
+| --- | --- | --- | --- |
+| `development`, `preview` | dev (`edaxpqeszssgmlfpsyrn`) | Batwa Dev | `online.batwa.app.dev` |
+| `production` | prod (`byjytsoeayopmcaabgyj`) | Batwa | `online.batwa.app` |
+
+Dev credentials are the `base` profile, so a new profile that forgets to set
+`env` inherits the dev database rather than the real ledger. Separate package
+names mean both apps install side by side instead of overwriting each other —
+`eas build --profile preview` will not replace the app you actually use.
+
 ## Project refs (not secret)
 
 - **Prod Supabase:** `byjytsoeayopmcaabgyj`

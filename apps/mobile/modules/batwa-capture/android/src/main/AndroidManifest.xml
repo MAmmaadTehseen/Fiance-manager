@@ -23,11 +23,16 @@
       notification your SMS app posts is not covered by the restricted
       SMS/Call Log policy. It also catches banks that push through their own
       app rather than by text.
+
+      The label comes from the app's own name rather than a fixed string:
+      dev and production are separate installs, and Android's
+      notification-access screen lists services by this label — hard-coding
+      "Batwa" showed two identical rows with no way to tell them apart.
     -->
     <service
       android:name=".BatwaNotificationListener"
       android:exported="true"
-      android:label="Batwa"
+      android:label="@string/app_name"
       android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
       <intent-filter>
         <action android:name="android.service.notification.NotificationListenerService" />

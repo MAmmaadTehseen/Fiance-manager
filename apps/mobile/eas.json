@@ -5,15 +5,17 @@
   },
   "build": {
     "base": {
+      "//": "Dev credentials are the base on purpose: a profile that forgets to set env inherits the dev database, never the real ledger. The failure mode of a mistake should be harmless.",
       "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://byjytsoeayopmcaabgyj.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_3Ylq92PI0XTePhNgiZWy4Q_-UFd8T0r"
+        "EXPO_PUBLIC_SUPABASE_URL": "https://edaxpqeszssgmlfpsyrn.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_fvsrx9tpEEOsaiNRKV2kTg_gO2CrhqR"
       }
     },
     "development": {
       "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
+      "channel": "development",
       "android": {
         "buildType": "apk"
       }
@@ -29,6 +31,10 @@
     "production": {
       "extends": "base",
       "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://byjytsoeayopmcaabgyj.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_3Ylq92PI0XTePhNgiZWy4Q_-UFd8T0r"
+      },
       "android": {
         "buildType": "app-bundle"
       }
