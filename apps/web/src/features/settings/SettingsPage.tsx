@@ -5,6 +5,8 @@ import { useAuth } from '@/lib/auth'
 import { useTheme } from '@/lib/theme'
 import { buildLedgerCsv } from '@batwa/core'
 import { ConnectEmail } from './ConnectEmail'
+import { ManageCategories } from './ManageCategories'
+import { ManagePayees } from './ManagePayees'
 import { ConnectPhone } from './ConnectPhone'
 
 const CARD =
@@ -70,6 +72,12 @@ export function SettingsPage() {
 
       {/* -------------------------------------------------- phone connection */}
       <ConnectPhone />
+
+      {/* ------------------------------------------------------- categories */}
+      <ManageCategories />
+
+      {/* ----------------------------------------------------------- payees */}
+      <ManagePayees />
 
       {/* ----------------------------------------------------- appearance */}
       {/* The theme control lives here and only here — not in the sidebar. */}

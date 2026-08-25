@@ -204,6 +204,27 @@ export function useAssignSenderToAccount() {
   })
 }
 
+/**
+ * The whole capture feed, verdicts included — parsed, linked, ignored,
+ * unreadable — so the templates can be judged against what actually arrived
+ * rather than only against what failed.
+ */
+export function useCaptureFeed(limit = 100) {
+  return useQuery({
+    queryKey: [...ingestKeys.messages, 'feed', limit],
+    queryFn: async (): Promise<OpenMessage[]> => {
+      const { data, error } = await getSupabase()
+        .from('sms_messages')
+        .select('*')
+        .order('received_at', { ascending: false })
+        .limit(limit)
+        .returns<OpenMessage[]>()
+      if (error) throw error
+      return data ?? []
+    },
+  })
+}
+
 /** Drops a message we will never care about (spam, a stray personal text). */
 export function useDismissMessage() {
   const qc = useQueryClient()

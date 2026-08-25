@@ -327,6 +327,7 @@ export type Database = {
           display_name: string
           id: string
           last_seen_at: string | null
+          merged_into: string | null
           raw_name: string
           times_seen: number
           user_id: string
@@ -337,6 +338,7 @@ export type Database = {
           display_name: string
           id?: string
           last_seen_at?: string | null
+          merged_into?: string | null
           raw_name: string
           times_seen?: number
           user_id?: string
@@ -347,6 +349,7 @@ export type Database = {
           display_name?: string
           id?: string
           last_seen_at?: string | null
+          merged_into?: string | null
           raw_name?: string
           times_seen?: number
           user_id?: string
@@ -357,6 +360,13 @@ export type Database = {
             columns: ["default_category_id", "user_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "merchants_merged_into_fkey"
+            columns: ["merged_into", "user_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
             referencedColumns: ["id", "user_id"]
           },
         ]

@@ -311,7 +311,7 @@ export async function processStoredMessage(
   if (fields.merchantKey && txType !== 'transfer') {
     const { data: existing } = await db
       .from('merchants')
-      .select('id, default_category_id, times_seen')
+      .select('id, default_category_id, times_seen, merged_into')
       .eq('user_id', userId)
       .eq('raw_name', fields.merchantKey)
       .maybeSingle()
@@ -319,6 +319,21 @@ export async function processStoredMessage(
     if (existing) {
       merchantId = existing.id
       categoryId = existing.default_category_id
+      // An alias of a merged payee: the raw name still matches here, but the
+      // transaction belongs to the canonical payee — one shop collecting
+      // through several accounts is still one shop. One hop only; the schema
+      // forbids chains.
+      if (existing.merged_into) {
+        const { data: canonical } = await db
+          .from('merchants')
+          .select('id, default_category_id')
+          .eq('id', existing.merged_into)
+          .maybeSingle()
+        if (canonical) {
+          merchantId = canonical.id
+          categoryId = canonical.default_category_id
+        }
+      }
       await db
         .from('merchants')
         .update({

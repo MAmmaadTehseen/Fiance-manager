@@ -10,6 +10,7 @@ import { useTransactions, type TransactionRow } from '@batwa/core'
 import { useInboxCount } from '@batwa/core'
 import { formatMoney, toNumber } from '@batwa/core'
 import { cn } from '@/lib/utils'
+import { OwedCard } from '@/features/owed/OwedCard'
 
 const MONTHS_SHOWN = 6
 
@@ -325,6 +326,8 @@ export function DashboardPage() {
       </div>
 
       {/* -------------------------------------------------- recent activity */}
+
+      <OwedCard />
       <Card className="flex flex-col gap-2 p-[clamp(18px,3vw,26px)]">
         <div className="flex items-baseline justify-between pb-1.5">
           <h2 className="m-0 text-[15px] font-bold">Recent activity</h2>

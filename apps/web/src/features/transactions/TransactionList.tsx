@@ -37,6 +37,12 @@ function secondaryLabel(t: TransactionRow): string | null {
   return parts.length ? parts.join(' · ') : null
 }
 
+/** An open claim rides on the row until the repayment settles it. */
+function owedLabel(t: TransactionRow): string | null {
+  if (t.owed_amount == null || t.settled_by_id) return null
+  return `${t.owed_by} owes ${formatMoney(t.owed_amount)}`
+}
+
 export function TransactionList({
   transactions,
   loading = false,
@@ -124,6 +130,11 @@ export function TransactionList({
                       >
                         {needsReview ? 'Needs a category' : secondaryLabel(t)}
                       </span>
+                      {owedLabel(t) && (
+                        <span className="block truncate text-[12px] font-semibold text-gold-ink">
+                          {owedLabel(t)}
+                        </span>
+                      )}
                     </span>
 
                     <span

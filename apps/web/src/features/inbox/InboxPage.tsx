@@ -6,7 +6,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { formatMoney } from '@batwa/core'
-import { useAssignSenderToAccount } from '@batwa/core'
+import { useAssignSenderToAccount, useCaptureFeed } from '@batwa/core'
 import { useCategories } from '@batwa/core'
 import { AddCategory } from '@/components/AddCategory'
 import { useAccounts } from '@batwa/core'
@@ -318,6 +318,84 @@ export function InboxPage() {
           ))}
         </div>
       )}
+
+      <CaptureFeed />
     </div>
+  )
+}
+
+const FEED_TONE: Record<string, string> = {
+  parsed: 'bg-brand-soft text-brand',
+  duplicate: 'bg-soft text-sub',
+  ignored: 'bg-soft text-sub',
+  unmatched: 'bg-gold-soft text-gold-ink',
+  needs_account: 'bg-gold-soft text-gold-ink',
+}
+
+const FEED_LABEL: Record<string, string> = {
+  parsed: 'filed',
+  duplicate: 'already had it',
+  ignored: 'dismissed',
+  unmatched: "couldn't read",
+  needs_account: 'which account?',
+}
+
+/**
+ * Everything captured, verdicts included — filed and failed alike.
+ *
+ * The open cards above only show what needs a human, which makes it
+ * impossible to judge the parser: a bank whose alerts silently file
+ * themselves looks identical to a bank that was never captured at all.
+ * This is the audit trail that separates the two, and the place to spot a
+ * format worth a new template. Collapsed by default; on a good day nobody
+ * needs it.
+ */
+function CaptureFeed() {
+  const [open, setOpen] = useState(false)
+  const { data: messages = [] } = useCaptureFeed(60)
+
+  if (messages.length === 0) return null
+
+  return (
+    <section className="flex flex-col gap-3">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="self-start text-[13.5px] font-semibold text-sub transition hover:text-ink"
+      >
+        {open ? '▾' : '▸'} Everything captured · {messages.length} recent
+      </button>
+
+      {open && (
+        <Card className="overflow-hidden p-0">
+          <ul className="m-0 flex list-none flex-col p-0">
+            {messages.map((m) => (
+              <li
+                key={m.id}
+                className="flex flex-col gap-1 border-t border-line px-4 py-3 first:border-t-0 sm:px-5"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">
+                    {m.sender}
+                  </span>
+                  <span className="shrink-0 text-[11.5px] text-sub">
+                    {ago(m.received_at)}
+                  </span>
+                  <span
+                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${FEED_TONE[m.parse_status] ?? 'bg-soft text-sub'}`}
+                  >
+                    {FEED_LABEL[m.parse_status] ?? m.parse_status}
+                  </span>
+                </div>
+                <p className="m-0 truncate font-mono text-[12px] text-sub">
+                  {m.body}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+    </section>
   )
 }

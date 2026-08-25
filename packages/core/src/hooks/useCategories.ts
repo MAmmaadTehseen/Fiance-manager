@@ -76,3 +76,64 @@ export function useCreateCategory() {
     },
   })
 }
+
+
+/**
+ * Every category, archived ones included — only the Settings manager wants
+ * this; every picker stays on `useCategories`, which hides them.
+ */
+export function useAllCategories() {
+  return useQuery({
+    queryKey: [...categoryKeys.all, 'everything'],
+    queryFn: async (): Promise<Category[]> => {
+      const { data, error } = await getSupabase()
+        .from('categories')
+        .select('*')
+        .order('kind')
+        .order('sort_order')
+        .order('name')
+      if (error) throw error
+      return data ?? []
+    },
+  })
+}
+
+/**
+ * Retires a category from every picker, or brings one back.
+ *
+ * Archive, never delete: transactions already filed under it keep their
+ * history and their place in old months' totals — the seeds are a starting
+ * point, and "I will never track Clothing" should not rewrite the past.
+ * System categories are refused here because the pipeline looks them up by
+ * slug; archiving bank-charges would break fee posting silently.
+ */
+export function useSetCategoryArchived() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      categoryId,
+      archived,
+    }: {
+      categoryId: string
+      archived: boolean
+    }) => {
+      const { data: category, error: readError } = await getSupabase()
+        .from('categories')
+        .select('is_system')
+        .eq('id', categoryId)
+        .single()
+      if (readError) throw readError
+      if (category.is_system && archived)
+        throw new Error('That one is used by the app itself and has to stay.')
+
+      const { error } = await getSupabase()
+        .from('categories')
+        .update({ archived_at: archived ? new Date().toISOString() : null })
+        .eq('id', categoryId)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: categoryKeys.all })
+    },
+  })
+}

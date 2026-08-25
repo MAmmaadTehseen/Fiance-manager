@@ -10,10 +10,12 @@ import { useCategories } from '@batwa/core'
 import {
   useCreateTransaction,
   useDeleteTransaction,
+  useSetOwed,
   useUpdateTransaction,
 } from '@batwa/core'
 import type { TransactionRow, TransactionType } from '@batwa/core'
 import { AddCategory } from '@/components/AddCategory'
+import { SplitPayment } from './SplitPayment'
 
 const TYPES: { value: TransactionType; label: string }[] = [
   { value: 'expense', label: 'Spent' },
@@ -70,6 +72,13 @@ export function TransactionForm({
   )
   const [error, setError] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [splitting, setSplitting] = useState(false)
+  const [claiming, setClaiming] = useState(transaction?.owed_amount != null)
+  const [owedBy, setOwedBy] = useState(transaction?.owed_by ?? '')
+  const [owedAmount, setOwedAmount] = useState(
+    transaction?.owed_amount != null ? String(toNumber(transaction.owed_amount)) : '',
+  )
+  const setOwed = useSetOwed()
 
   // Default to the primary account once accounts load.
   useEffect(() => {
@@ -299,6 +308,103 @@ export function TransactionForm({
               onChange={(e) => setNote(e.target.value)}
             />
           </div>
+
+          {editing && type !== 'transfer' && !splitting && (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setSplitting(true)}
+              >
+                Split this payment
+              </Button>
+              {!claiming && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setClaiming(true)}
+                >
+                  Someone owes part of this
+                </Button>
+              )}
+            </div>
+          )}
+
+          {editing && splitting && transaction && (
+            <SplitPayment transaction={transaction} onDone={onClose} />
+          )}
+
+          {editing && claiming && !splitting && (
+            <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
+              <Label className="m-0">Owed back to you</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Who — e.g. Mohsin"
+                  aria-label="Who owes you"
+                  value={owedBy}
+                  onChange={(e) => setOwedBy(e.target.value)}
+                  className="h-10 flex-1"
+                />
+                <Input
+                  inputMode="decimal"
+                  placeholder="How much"
+                  aria-label="Amount owed"
+                  value={owedAmount}
+                  onChange={(e) => setOwedAmount(e.target.value)}
+                  className="tabular h-10 w-28"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={setOwed.isPending || !owedBy.trim() || !parseAmount(owedAmount)}
+                  onClick={async () => {
+                    try {
+                      await setOwed.mutateAsync({
+                        transactionId: transaction!.id,
+                        owedBy,
+                        owedAmount: parseAmount(owedAmount),
+                      })
+                    } catch (e) {
+                      setError(e instanceof Error ? e.message : 'Could not save that')
+                    }
+                  }}
+                >
+                  {setOwed.isPending
+                    ? 'Saving…'
+                    : transaction?.owed_amount != null
+                      ? 'Update claim'
+                      : 'Remember it'}
+                </Button>
+                {transaction?.owed_amount != null && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      await setOwed.mutateAsync({
+                        transactionId: transaction!.id,
+                        owedBy: null,
+                        owedAmount: null,
+                      })
+                      setClaiming(false)
+                      setOwedBy('')
+                      setOwedAmount('')
+                    }}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+              <p className="m-0 text-xs text-muted-foreground">
+                The spend stays on your books in full — this just remembers who
+                owes you what, until their payment arrives.
+              </p>
+            </div>
+          )}
 
           <Button type="submit" size="lg" className="mt-2" disabled={pending}>
             {create.isPending || update.isPending ? 'Saving…' : 'Save'}
