@@ -30,10 +30,11 @@ import {
   Screen,
   ScreenHeader,
 } from '../../components/ui'
+import { OwedView } from '../../components/OwedView'
 import { useColors } from '../../lib/useTheme'
 import type { Colors } from '../../lib/theme'
 
-type Segment = 'budgets' | 'goals' | 'recurring'
+type Segment = 'budgets' | 'goals' | 'recurring' | 'owed'
 
 function useInputStyle(colors: Colors) {
   return {
@@ -359,6 +360,7 @@ export default function PlanScreen() {
     { id: 'budgets', label: 'Budgets' },
     { id: 'goals', label: 'Goals' },
     { id: 'recurring', label: 'Recurring' },
+    { id: 'owed', label: 'Owed' },
   ]
 
   return (
@@ -383,6 +385,7 @@ export default function PlanScreen() {
       {segment === 'budgets' && <BudgetsView />}
       {segment === 'goals' && <GoalsView />}
       {segment === 'recurring' && <RecurringView />}
+      {segment === 'owed' && <OwedView />}
     </Screen>
   )
 }

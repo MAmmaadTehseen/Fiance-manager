@@ -29,6 +29,7 @@ import {
   Tag,
 } from '../../components/ui'
 import { useColors } from '../../lib/useTheme'
+import { AddCategory } from '../../components/AddCategory'
 
 function ago(iso: string): string {
   try {
@@ -200,6 +201,19 @@ function ReviewCard({ tx }: { tx: TransactionRow }) {
             }
           />
         ))}
+
+        <AddCategory
+          kind={tx.type === 'income' ? 'income' : 'expense'}
+          disabled={categorise.isPending}
+          onCreated={(category) =>
+            categorise.mutate({
+              transactionId: tx.id,
+              categoryId: category.id,
+              merchantId: tx.merchant_id,
+              type: tx.type,
+            })
+          }
+        />
       </View>
 
       {tx.merchant_id ? (

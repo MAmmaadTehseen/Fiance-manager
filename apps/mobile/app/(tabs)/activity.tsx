@@ -35,6 +35,8 @@ import {
   ScreenHeader,
 } from '../../components/ui'
 import { useColors } from '../../lib/useTheme'
+import { QuickCash } from '../../components/QuickCash'
+import { TransactionSheet } from '../../components/TransactionSheet'
 
 type Filter = 'all' | TransactionType | 'uncategorised'
 
@@ -50,10 +52,11 @@ function initial(t: TransactionRow): string {
   return source.trim()[0]?.toUpperCase() ?? '?'
 }
 
-function Row({ t }: { t: TransactionRow }) {
+function Row({ t, onPress }: { t: TransactionRow; onPress: () => void }) {
   const colors = useColors()
   return (
-    <View
+    <Pressable
+      onPress={onPress}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -92,7 +95,7 @@ function Row({ t }: { t: TransactionRow }) {
                 : colors.ink,
         }}
       />
-    </View>
+    </Pressable>
   )
 }
 
@@ -286,6 +289,7 @@ export default function ActivityScreen() {
   const [filter, setFilter] = useState<Filter>('all')
   const [adding, setAdding] = useState(false)
   const [search, setSearch] = useState('')
+  const [selected, setSelected] = useState<TransactionRow | null>(null)
   const { data: needsReview = 0 } = useInboxCount()
 
   // Trails the typing so the ledger is not re-queried on every keystroke.
@@ -334,6 +338,8 @@ export default function ActivityScreen() {
           </Pressable>
         }
       />
+
+      <QuickCash />
 
       {/* Searching by name is how you actually find a payment you remember —
           "that 5,000 to Mohid" — so it sits above the filters rather than
@@ -409,12 +415,21 @@ export default function ActivityScreen() {
       ) : (
         <Card style={{ paddingVertical: 4 }}>
           {transactions.map((t) => (
-            <Row key={t.id} t={t} />
+            <Row key={t.id} t={t} onPress={() => setSelected(t)} />
           ))}
         </Card>
       )}
 
       {adding && <AddTransaction onClose={() => setAdding(false)} />}
+      {selected && (
+        <TransactionSheet
+          // Keyed so opening a different row rebuilds the panels rather than
+          // carrying the previous transaction's half-typed split across.
+          key={selected.id}
+          transaction={selected}
+          onClose={() => setSelected(null)}
+        />
+      )}
     </Screen>
   )
 }

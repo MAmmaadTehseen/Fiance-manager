@@ -6,6 +6,8 @@ import { Pressable, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import { getSupabase } from '@batwa/core'
 import { Card, Screen, ScreenHeader } from '../../components/ui'
+import { ManageCategories } from '../../components/ManageCategories'
+import { ManagePayees } from '../../components/ManagePayees'
 import { useColors, useTheme } from '../../lib/useTheme'
 import { useSession } from '../../lib/session'
 
@@ -75,6 +77,12 @@ export default function SettingsScreen() {
           </View>
         </Card>
       </Pressable>
+
+      {/* ------------------------------------------------- categories */}
+      <ManageCategories />
+
+      {/* ----------------------------------------------------- payees */}
+      <ManagePayees />
 
       {/* ------------------------------------------------- appearance */}
       <Card>
