@@ -534,6 +534,61 @@ export async function processStoredMessage(
     }
   }
 
+  // A one-sided alert that is really the far side of a transfer already here.
+  //
+  // The receiving bank cannot know the payment was internal. Its email names
+  // only the sender's IBAN, which matches none of the user's stored accounts,
+  // so the credit parses as plain income and the ledger counts money that
+  // never arrived from outside — the transfer already moved it.
+  //
+  // The sending bank's alert does know: it names the destination account, so
+  // its leg was booked as a transfer INTO the account this credit landed in.
+  // That row is the evidence, so match against it rather than trying to read
+  // intent out of a message that does not carry it.
+  if (!isInternalTransfer && (txType === 'income' || txType === 'expense')) {
+    const lStart = new Date(at - TRANSFER_MATCH_WINDOW_SECONDS * 1000).toISOString()
+    const lEnd = new Date(at + TRANSFER_MATCH_WINDOW_SECONDS * 1000).toISOString()
+
+    // Money in lands on the transfer's destination; money out leaves its
+    // source. Either way the leg must still have a free slot, so a transfer
+    // that already absorbed its opposite half is never claimed twice.
+    const sideColumn =
+      txType === 'income' ? 'counterparty_account_id' : 'account_id'
+
+    const { data: legs } = await db
+      .from('transactions')
+      .select('id, sms_message_id, sms_message_id_2')
+      .eq('user_id', userId)
+      .eq('type', 'transfer')
+      .eq('amount', fields.amount)
+      .eq(sideColumn, sourceId)
+      .is('sms_message_id_2', null)
+      .gte('occurred_at', lStart)
+      .lte('occurred_at', lEnd)
+      .order('occurred_at', { ascending: true })
+      .limit(5)
+
+    for (const leg of legs ?? []) {
+      // The two legs come from two different banks. A candidate created by a
+      // message from the SAME sender is that bank talking about a second
+      // movement, not the other half of this one.
+      if (leg.sms_message_id) {
+        const { data: creator } = await db
+          .from('sms_messages')
+          .select('sender')
+          .eq('id', leg.sms_message_id)
+          .maybeSingle()
+        if (creator && creator.sender === message.sender) continue
+      }
+
+      return await linkIntoExisting(
+        leg,
+        'the receiving side of a transfer already recorded',
+        result.template.id,
+      )
+    }
+  }
+
   // The same payment, announced by a different channel.
   //
   // The checks above cannot see this one. `body_hash` and the body match need
