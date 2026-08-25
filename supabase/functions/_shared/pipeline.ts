@@ -46,7 +46,20 @@ const CHANNEL_MATCH_WINDOW_SECONDS = 900
 function referenceKey(reference: string | null | undefined): string | null {
   if (!reference) return null
   const normalised = String(reference).toUpperCase().replace(/[^A-Z0-9]/g, '')
-  return normalised.length >= 5 ? `ref:${normalised}` : null
+  if (normalised.length < 5) return null
+
+  // Never key on something shaped like an account number.
+  //
+  // A template that grabs the wrong token is a cosmetic misparse right up to
+  // the moment it is used as an identity: an IBAN is the same on every payment
+  // to that beneficiary, so keying on one would make the second payment look
+  // like a duplicate of the first and silently swallow it. Losing a real
+  // transaction is far worse than failing to spot a duplicate, so anything
+  // carrying the ISO country-and-check-digit prefix is refused outright and
+  // the payment falls through to the other checks.
+  if (/^[A-Z]{2}\d{2}[A-Z0-9]{6,}$/.test(normalised)) return null
+
+  return `ref:${normalised}`
 }
 
 export type StoredMessage = {
