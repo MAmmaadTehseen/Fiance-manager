@@ -13,6 +13,7 @@ import {
   useUpdateTransaction,
 } from '@batwa/core'
 import type { TransactionRow, TransactionType } from '@batwa/core'
+import { AddCategory } from '@/components/AddCategory'
 
 const TYPES: { value: TransactionType; label: string }[] = [
   { value: 'expense', label: 'Spent' },
@@ -269,6 +270,12 @@ export function TransactionForm({
                     {c.name}
                   </button>
                 ))}
+
+                <AddCategory
+                  kind={type === 'income' ? 'income' : 'expense'}
+                  className="rounded-full border border-dashed border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent"
+                  onCreated={(category) => setCategoryId(category.id)}
+                />
               </div>
             </div>
           )}

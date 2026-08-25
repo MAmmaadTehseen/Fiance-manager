@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getSupabase } from '../client'
 import type { Category, CategoryKind } from '../types/db'
 
@@ -24,6 +24,55 @@ export function useCategories(kind?: CategoryKind) {
       const { data, error } = await q
       if (error) throw error
       return data ?? []
+    },
+  })
+}
+
+
+/**
+ * Adds a category of the user's own.
+ *
+ * The seeded list is a starting point, not the vocabulary someone has to live
+ * inside — what a person tracks is personal, and a spend they cannot name ends
+ * up mis-filed or left in the Inbox forever.
+ *
+ * `user_id` is left to the column default (`auth.uid()`), so a category cannot
+ * be created against somebody else's account even if the caller tries. Sorted
+ * last by default, keeping the familiar seeded order stable at the top.
+ */
+export function useCreateCategory() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      name,
+      kind = 'expense',
+    }: {
+      name: string
+      kind?: CategoryKind
+    }): Promise<Category> => {
+      const trimmed = name.trim()
+      if (!trimmed) throw new Error('Give the category a name.')
+
+      const { data, error } = await getSupabase()
+        .from('categories')
+        .insert({ name: trimmed, kind, sort_order: 999 })
+        .select()
+        .single()
+
+      if (error) {
+        // The unique index is per (user, name, kind), so this means they
+        // already have one by that name — worth saying plainly rather than
+        // surfacing a constraint name.
+        if (error.code === '23505') {
+          throw new Error(`You already have a ${kind} category called “${trimmed}”.`)
+        }
+        throw error
+      }
+      return data
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: categoryKeys.all })
     },
   })
 }

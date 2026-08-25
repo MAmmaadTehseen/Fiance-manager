@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { formatMoney } from '@batwa/core'
 import { useCategories } from '@batwa/core'
+import { AddCategory } from '@/components/AddCategory'
 import { useAccounts } from '@batwa/core'
 import { useReprocess } from '@batwa/core'
 import {
@@ -102,6 +103,19 @@ function ReviewCard({ tx }: { tx: TransactionRow }) {
             {c.name}
           </button>
         ))}
+
+        <AddCategory
+          kind={tx.type === 'income' ? 'income' : 'expense'}
+          disabled={categorise.isPending}
+          className="rounded-full border border-dashed border-line px-3 py-1.5 text-[13px] font-semibold text-sub transition-colors hover:border-brand hover:text-ink disabled:opacity-50"
+          onCreated={(category) =>
+            categorise.mutate({
+              transactionId: tx.id,
+              categoryId: category.id,
+              merchantId: tx.merchant_id,
+            })
+          }
+        />
       </div>
 
       {tx.merchant_id && (
