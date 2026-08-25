@@ -4,10 +4,10 @@ import { PageHeader } from '@/components/PageHeader'
 import { EmptyState } from '@/components/EmptyState'
 import { Chip } from '@/components/Chip'
 import { Card } from '@/components/ui/card'
-import { useDebounced } from '@/lib/useDebounced'
 import {
   formatMoney,
   resolveRange,
+  useDebounced,
   useCategories,
   useInboxCount,
   useTransactions,

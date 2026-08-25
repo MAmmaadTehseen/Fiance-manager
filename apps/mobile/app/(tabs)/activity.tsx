@@ -17,6 +17,7 @@ import {
   useCategories,
   useCreateTransaction,
   useInboxCount,
+  useDebounced,
   useTransactions,
   parseAmount,
   type NewTransaction,
@@ -284,18 +285,23 @@ export default function ActivityScreen() {
   const colors = useColors()
   const [filter, setFilter] = useState<Filter>('all')
   const [adding, setAdding] = useState(false)
+  const [search, setSearch] = useState('')
   const { data: needsReview = 0 } = useInboxCount()
+
+  // Trails the typing so the ledger is not re-queried on every keystroke.
+  const query = useDebounced(search).trim()
 
   const params = useMemo(
     () => ({
       limit: 200,
+      ...(query ? { search: query } : {}),
       ...(filter === 'uncategorised'
         ? { status: 'needs_review' as const }
         : filter === 'all'
           ? {}
           : { type: filter }),
     }),
-    [filter],
+    [filter, query],
   )
 
   const {
@@ -328,6 +334,43 @@ export default function ActivityScreen() {
           </Pressable>
         }
       />
+
+      {/* Searching by name is how you actually find a payment you remember —
+          "that 5,000 to Mohid" — so it sits above the filters rather than
+          behind them. Matches payee, note, category, account and the bare
+          amount; see the search notes in useTransactions. */}
+      <View
+        style={{
+          height: 44,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: colors.line,
+          backgroundColor: colors.card,
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 14,
+          gap: 8,
+        }}
+      >
+        <TextInput
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search name, note or amount"
+          placeholderTextColor={colors.sub}
+          autoCorrect={false}
+          returnKeyType="search"
+          style={{ flex: 1, fontSize: 14, color: colors.ink }}
+        />
+        {search.length > 0 ? (
+          <Pressable
+            onPress={() => setSearch('')}
+            hitSlop={10}
+            accessibilityLabel="Clear search"
+          >
+            <Text style={{ fontSize: 16, color: colors.sub }}>×</Text>
+          </Pressable>
+        ) : null}
+      </View>
 
       <ScrollView
         horizontal
