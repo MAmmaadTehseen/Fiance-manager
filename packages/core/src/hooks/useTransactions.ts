@@ -292,6 +292,13 @@ export function useSplitTransaction() {
  * Treating the reimbursable half as income when it returns would inflate both
  * sides of the ledger; the claim is tracked beside the payment instead, and
  * settling it links the two rather than inventing a third.
+ *
+ * Nobody can owe more than was paid, and the database says so. The amount is
+ * checked here first so that typing 6,000 against a 5,000 dinner — an easy
+ * slip when several people are paying you back different shares — comes back
+ * as a sentence rather than as the name of a check constraint. It is read
+ * from the row rather than taken from the form, because the form's amount
+ * field may have been edited and not yet saved.
  */
 export function useSetOwed() {
   const qc = useQueryClient()
@@ -307,7 +314,28 @@ export function useSetOwed() {
       owedAmount: number | null
     }) => {
       const clearing = owedAmount == null || !owedBy?.trim()
-      const { error } = await getSupabase()
+      const db = getSupabase()
+
+      if (!clearing) {
+        if (!(owedAmount > 0))
+          throw new Error('How much do they owe you?')
+
+        const { data: row, error: readError } = await db
+          .from('transactions')
+          .select('amount')
+          .eq('id', transactionId)
+          .single()
+        if (readError) throw readError
+
+        const paid = toNumber(row.amount)
+        if (owedAmount > paid) {
+          throw new Error(
+            `This payment was ${paid.toFixed(0)}, so ${owedBy!.trim()} cannot owe ${owedAmount.toFixed(0)} of it.`,
+          )
+        }
+      }
+
+      const { error } = await db
         .from('transactions')
         .update(
           clearing
