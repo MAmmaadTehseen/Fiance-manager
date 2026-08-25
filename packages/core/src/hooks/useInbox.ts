@@ -3,7 +3,7 @@ import { getSupabase } from '../client'
 import { transactionKeys, type TransactionRow } from './useTransactions'
 import { accountKeys } from './useAccounts'
 import { ingestKeys } from './useIngest'
-import type { ParsedFields, SmsMessage } from '../types/db'
+import type { ParsedFields, SmsMessage, TransactionType } from '../types/db'
 
 /**
  * The inbox holds only genuine unknowns. Everything the app could work out on
@@ -65,6 +65,18 @@ function invalidateEverything(qc: ReturnType<typeof useQueryClient>) {
  * The teach-once loop, and the single most important interaction in the app:
  * categorising a transaction also teaches the merchant, so the next message
  * from that shop files itself and never appears here again.
+ *
+ * Teaching also reaches backwards. Naming one payment from a payee used to
+ * leave every other payment from the same payee sitting in the Inbox, because
+ * the merchant's default is only read when a message is first parsed. Someone
+ * who had already been paying one person for months would file one, watch the
+ * rest stay put, and reasonably conclude nothing had been learnt — so the
+ * catch-up is the difference between the feature working and merely existing.
+ *
+ * Only rows still waiting are touched, so a category chosen deliberately for
+ * an earlier payment is never overwritten, and only rows of the same direction
+ * — a payee can both take and send money, and an expense category on income
+ * would be nonsense.
  */
 export function useCategorise() {
   const qc = useQueryClient()
@@ -73,26 +85,40 @@ export function useCategorise() {
       transactionId,
       categoryId,
       merchantId,
+      type,
       remember = true,
     }: {
       transactionId: string
       categoryId: string
       merchantId: string | null
+      /** Direction of the transaction being filed; bounds the catch-up. */
+      type: TransactionType
       remember?: boolean
-    }) => {
+    }): Promise<{ alsoFiled: number }> => {
       const { error } = await getSupabase()
         .from('transactions')
         .update({ category_id: categoryId, status: 'cleared' })
         .eq('id', transactionId)
       if (error) throw error
 
-      if (remember && merchantId) {
-        const { error: merchantError } = await getSupabase()
-          .from('merchants')
-          .update({ default_category_id: categoryId })
-          .eq('id', merchantId)
-        if (merchantError) throw merchantError
-      }
+      if (!remember || !merchantId) return { alsoFiled: 0 }
+
+      const { error: merchantError } = await getSupabase()
+        .from('merchants')
+        .update({ default_category_id: categoryId })
+        .eq('id', merchantId)
+      if (merchantError) throw merchantError
+
+      const { data: caughtUp, error: catchUpError } = await getSupabase()
+        .from('transactions')
+        .update({ category_id: categoryId, status: 'cleared' })
+        .eq('merchant_id', merchantId)
+        .eq('status', 'needs_review')
+        .eq('type', type)
+        .select('id')
+      if (catchUpError) throw catchUpError
+
+      return { alsoFiled: caughtUp?.length ?? 0 }
     },
     onSuccess: () => invalidateEverything(qc),
   })
@@ -116,6 +142,58 @@ export function useAssignCardToAccount() {
       const { error } = await getSupabase()
         .from('accounts')
         .update({ last4 })
+        .eq('id', accountId)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: accountKeys.all })
+      invalidateEverything(qc)
+    },
+  })
+}
+
+/**
+ * Teaches an account by the bank that sent the message, for alerts that name
+ * no card at all.
+ *
+ * Plenty of alerts never quote four digits — an outgoing RAAST names only the
+ * recipient, and some banks mask the account down to something like
+ * "32*****33". `resolveAccount` already falls back to matching the sender
+ * against `accounts.sms_senders`, and has always described that as learned
+ * once via the inbox — but nothing ever wrote to it, so the inbox asked which
+ * account a message belonged to and offered no way to answer. Every button was
+ * disabled and the only exit was to dismiss the payment.
+ *
+ * Stored uppercased, because that is the form the resolver compares against.
+ */
+export function useAssignSenderToAccount() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      accountId,
+      sender,
+    }: {
+      accountId: string
+      sender: string
+    }) => {
+      const key = sender.trim().toUpperCase()
+      if (!key) throw new Error('That message has no sender to learn from.')
+
+      // Read first so an existing list is extended rather than replaced: an
+      // account can legitimately hear from more than one address.
+      const { data: account, error: readError } = await getSupabase()
+        .from('accounts')
+        .select('sms_senders')
+        .eq('id', accountId)
+        .single()
+      if (readError) throw readError
+
+      const senders = account?.sms_senders ?? []
+      if (senders.includes(key)) return
+
+      const { error } = await getSupabase()
+        .from('accounts')
+        .update({ sms_senders: [...senders, key] })
         .eq('id', accountId)
       if (error) throw error
     },

@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { formatMoney } from '@batwa/core'
+import { useAssignSenderToAccount } from '@batwa/core'
 import { useCategories } from '@batwa/core'
 import { AddCategory } from '@/components/AddCategory'
 import { useAccounts } from '@batwa/core'
@@ -96,6 +97,7 @@ function ReviewCard({ tx }: { tx: TransactionRow }) {
                 transactionId: tx.id,
                 categoryId: c.id,
                 merchantId: tx.merchant_id,
+                type: tx.type,
               })
             }
             className="rounded-full border border-line px-3 py-1.5 text-[13px] font-semibold text-sub transition-colors hover:border-brand hover:bg-brand hover:text-brand-on disabled:opacity-50"
@@ -113,6 +115,7 @@ function ReviewCard({ tx }: { tx: TransactionRow }) {
               transactionId: tx.id,
               categoryId: category.id,
               merchantId: tx.merchant_id,
+              type: tx.type,
             })
           }
         />
@@ -132,6 +135,7 @@ function ReviewCard({ tx }: { tx: TransactionRow }) {
 function UnknownCardCard({ message }: { message: OpenMessage }) {
   const { data: accounts = [] } = useAccounts()
   const assign = useAssignCardToAccount()
+  const assignSender = useAssignSenderToAccount()
   const reprocess = useReprocess()
   const dismiss = useDismissMessage()
 
@@ -153,7 +157,9 @@ function UnknownCardCard({ message }: { message: OpenMessage }) {
 
       <p className="m-0 flex items-center gap-2 text-[14.5px] font-bold">
         <CreditCard className="size-4 shrink-0 text-gold-ink" aria-hidden />
-        Which account is •••• {last4}?
+        {last4
+          ? `Which account is •••• ${last4}?`
+          : 'Which account did this come from?'}
       </p>
 
       {/* The original SMS, so it's obvious which payment this is about. */}
@@ -168,9 +174,24 @@ function UnknownCardCard({ message }: { message: OpenMessage }) {
             <button
               key={a.id}
               type="button"
-              disabled={assign.isPending || reprocess.isPending || !last4}
+              disabled={
+                assign.isPending || assignSender.isPending || reprocess.isPending
+              }
               onClick={async () => {
-                await assign.mutateAsync({ accountId: a.id, last4 })
+                // Two ways to be taught, and which one applies is decided by
+                // what the message actually said. A quoted card teaches the
+                // card; an alert that names none — an outgoing RAAST, or a
+                // bank that masks the number past recognition — teaches the
+                // sending bank instead, which is the only durable thing left
+                // in it.
+                if (last4) {
+                  await assign.mutateAsync({ accountId: a.id, last4 })
+                } else {
+                  await assignSender.mutateAsync({
+                    accountId: a.id,
+                    sender: message.sender,
+                  })
+                }
                 await reprocess.mutateAsync(undefined)
               }}
               className="rounded-full border border-line px-3 py-1.5 text-[13px] font-semibold text-sub transition-colors hover:border-brand hover:bg-brand hover:text-brand-on disabled:opacity-50"
@@ -192,7 +213,9 @@ function UnknownCardCard({ message }: { message: OpenMessage }) {
       </div>
 
       <p className="m-0 text-xs text-sub">
-        Answering once resolves this and every future message from that card.
+        {last4
+          ? 'Answering once resolves this and every future message from that card.'
+          : `Answering once resolves this and every future alert from ${message.sender}.`}
       </p>
     </Card>
   )

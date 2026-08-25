@@ -195,6 +195,7 @@ function ReviewCard({ tx }: { tx: TransactionRow }) {
                 transactionId: tx.id,
                 categoryId: c.id,
                 merchantId: tx.merchant_id,
+                type: tx.type,
               })
             }
           />
