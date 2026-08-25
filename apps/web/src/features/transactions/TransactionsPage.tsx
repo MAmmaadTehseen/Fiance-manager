@@ -15,6 +15,7 @@ import {
   type TransactionRow,
   type TransactionType,
 } from '@batwa/core'
+import { QuickCash } from './QuickCash'
 import { TransactionList } from './TransactionList'
 import { TransactionForm } from './TransactionForm'
 
@@ -101,6 +102,8 @@ export function TransactionsPage() {
           </button>
         }
       />
+
+      <QuickCash />
 
       <div className="flex flex-col gap-3">
         <div className="flex gap-2">
