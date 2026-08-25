@@ -306,7 +306,16 @@ export function useSetOwed() {
   })
 }
 
-/** Marks a claim repaid by pointing at the payment that repaid it. */
+/**
+ * Marks a claim repaid by pointing at the payment that repaid it.
+ *
+ * A claim on a real spend stays on its row — the expense happened, only the
+ * debt beside it closes. A claim that IS the row — a receivable, a pending
+ * income standing in for money not yet arrived — is voided as well once the
+ * real payment lands, because from that moment the arrived payment is the
+ * truth and leaving an "expected" twin in the ledger reads as being paid
+ * twice.
+ */
 export function useSettleOwed() {
   const qc = useQueryClient()
 
@@ -318,11 +327,104 @@ export function useSettleOwed() {
       transactionId: string
       settledById: string | null
     }) => {
-      const { error } = await getSupabase()
+      const db = getSupabase()
+      const { data: claim, error: readError } = await db
         .from('transactions')
-        .update({ settled_by_id: settledById })
+        .select('status, type')
+        .eq('id', transactionId)
+        .single()
+      if (readError) throw readError
+
+      const isExpectation = claim.type === 'income' && claim.status === 'pending'
+      const { error } = await db
+        .from('transactions')
+        .update(
+          isExpectation && settledById
+            ? { settled_by_id: settledById, status: 'void' }
+            : { settled_by_id: settledById },
+        )
         .eq('id', transactionId)
       if (error) throw error
+    },
+    onSuccess: () => invalidateLedger(qc),
+  })
+}
+
+/**
+ * Records money you are expecting — side work delivered, an invoice in all
+ * but name: "20k from Uzair by 31 September".
+ *
+ * Stored as a pending income row rather than a new table, because the ledger
+ * already knows how to treat it: balances exclude pending rows by design, the
+ * due date is simply `occurred_at`, and carrying the claim fields puts it on
+ * the same "owed to you" surface as everything else people owe. The payee is
+ * found or created by name, so repeat clients accumulate a history like any
+ * other person in the ledger.
+ */
+export function useCreateReceivable() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      from,
+      amount,
+      dueDate,
+      accountId,
+      note,
+    }: {
+      from: string
+      amount: number
+      /** YYYY-MM-DD; the day it is due, not the day it was promised. */
+      dueDate: string
+      accountId: string
+      note?: string | null
+    }) => {
+      const name = from.trim()
+      if (!name) throw new Error('Who is it from?')
+      if (!(amount > 0)) throw new Error('The amount has to be above zero.')
+      if (!dueDate) throw new Error('When is it due?')
+      const db = getSupabase()
+
+      const rawName = name.toUpperCase()
+      const { data: existing, error: findError } = await db
+        .from('merchants')
+        .select('id, merged_into')
+        .eq('raw_name', rawName)
+        .maybeSingle()
+      if (findError) throw findError
+
+      let merchantId = existing?.merged_into ?? existing?.id ?? null
+      if (!merchantId) {
+        const { data: created, error: createError } = await db
+          .from('merchants')
+          .insert({ raw_name: rawName, display_name: name })
+          .select('id')
+          .single()
+        if (createError) throw createError
+        merchantId = created.id
+      }
+
+      // End of the due day, so it stays "due today" for the whole of today.
+      const due = new Date(`${dueDate}T23:59:00`)
+
+      const { data, error } = await db
+        .from('transactions')
+        .insert({
+          account_id: accountId,
+          type: 'income',
+          amount,
+          occurred_at: due.toISOString(),
+          merchant_id: merchantId,
+          note: note?.trim() || null,
+          source: 'manual',
+          status: 'pending',
+          owed_by: name,
+          owed_amount: amount,
+        })
+        .select('id')
+        .single()
+      if (error) throw error
+      return data
     },
     onSuccess: () => invalidateLedger(qc),
   })

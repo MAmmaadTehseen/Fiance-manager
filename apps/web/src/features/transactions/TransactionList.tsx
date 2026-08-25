@@ -128,7 +128,11 @@ export function TransactionList({
                           needsReview ? 'text-gold-ink' : 'text-sub',
                         )}
                       >
-                        {needsReview ? 'Needs a category' : secondaryLabel(t)}
+                        {needsReview
+                          ? 'Needs a category'
+                          : t.status === 'pending'
+                            ? `Expected · due ${format(parseISO(t.occurred_at), 'd MMM')}`
+                            : secondaryLabel(t)}
                       </span>
                       {owedLabel(t) && (
                         <span className="block truncate text-[12px] font-semibold text-gold-ink">
