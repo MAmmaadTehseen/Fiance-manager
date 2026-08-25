@@ -196,6 +196,14 @@ export type SplitPart = {
  * the user's own reading of it. Copying the message id would also collide with
  * the one-transaction-per-message index the moment two parts were equal —
  * splitting 20,000 into two 10,000s would fail on the second.
+ *
+ * A claim already recorded on the payment stays with the first part, which is
+ * where a claim on a mixed payment nearly always belongs — 23,000 of rent,
+ * deposit and stamp paper with 6,000 owed by a flatmate is 6,000 of the rent.
+ * If it no longer fits inside that part the split is refused rather than
+ * dropping it: someone owing you money is not something to lose quietly, and
+ * the database would reject the write anyway with a constraint name for a
+ * message.
  */
 export function useSplitTransaction() {
   const qc = useQueryClient()
@@ -232,6 +240,13 @@ export function useSplitTransaction() {
 
       const groupId = crypto.randomUUID()
       const [first, ...rest] = parts
+
+      const claimed = toNumber(original.owed_amount)
+      if (claimed > first!.amount) {
+        throw new Error(
+          `${original.owed_by ?? 'Someone'} owes ${claimed.toFixed(0)} of this payment, which is more than the first part (${first!.amount.toFixed(0)}). Clear or reduce the claim, split, then add it back to the right part.`,
+        )
+      }
 
       const { error: updateError } = await db
         .from('transactions')

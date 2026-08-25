@@ -144,8 +144,18 @@ const SPIKE_THRESHOLD = 0.25
  * anything — a 4,000 electricity bill is unremarkable next to rent and
  * alarming next to its own 2,400.
  */
-export function useUpcomingBills(now = new Date()) {
+export function useUpcomingBills(when?: Date) {
   const recurring = useRecurring()
+
+  // A fresh `new Date()` per render is a new object every time, so it would
+  // re-derive the whole list on every render and hand back new `due` objects
+  // for React to diff. Nothing here moves faster than the calendar, so the day
+  // is what the memo watches — and pinning `now` to midnight also makes
+  // "has its usual day passed" a comparison between dates rather than one
+  // between a date and a moment, which used to push a bill due *today* into
+  // next month from lunchtime onwards.
+  const dayKey = (when ?? new Date()).toDateString()
+  const now = useMemo(() => new Date(dayKey), [dayKey])
 
   const bills = useMemo((): UpcomingBill[] => {
     const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
