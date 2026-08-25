@@ -92,6 +92,20 @@ export function useMergeMerchants() {
         }
       }
 
+      // Names already folded into one of these have to be lifted to the new
+      // survivor *first*. Merging is iterative — you fold two names together,
+      // then months later realise the shop's real name is a third — and the
+      // database refuses to point at a payee that others are merged into,
+      // precisely so no chain can form. Lifting the grandchildren up empties
+      // that objection out before it is raised; done in the other order the
+      // user gets `cannot merge a payee that others are merged into` for an
+      // action that is perfectly reasonable.
+      const { error: liftError } = await db
+        .from('merchants')
+        .update({ merged_into: intoId })
+        .in('merged_into', ids)
+      if (liftError) throw liftError
+
       const { error: pointError } = await db
         .from('merchants')
         .update({ merged_into: intoId })
