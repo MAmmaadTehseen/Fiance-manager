@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getSupabase } from '../client'
+import { toNumber } from '../money'
 import { accountKeys } from './useAccounts'
 import type {
   Transaction,
@@ -169,5 +170,179 @@ export function useDeleteTransaction() {
       if (error) throw error
     },
     onSuccess: () => invalidateLedger(qc),
+  })
+}
+
+
+/** One piece of a payment being broken up. */
+export type SplitPart = {
+  amount: number
+  categoryId?: string | null
+  note?: string | null
+}
+
+/**
+ * Breaks one payment into the several things it actually paid for.
+ *
+ * The original row becomes the first part rather than becoming a parent that
+ * holds the total. A parent alongside its parts would repeat the money, and
+ * every balance view, total and export would need teaching to skip one of
+ * them — the first that forgot would silently double the payment. As siblings,
+ * everything that already sums transactions stays right without knowing splits
+ * exist, and `split_group_id` records only that they arrived together.
+ *
+ * The new rows deliberately do NOT carry the original's `sms_message_id` or
+ * `dedupe_hash`. The bank sent one message about one payment; the parts are
+ * the user's own reading of it. Copying the message id would also collide with
+ * the one-transaction-per-message index the moment two parts were equal —
+ * splitting 20,000 into two 10,000s would fail on the second.
+ */
+export function useSplitTransaction() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      transactionId,
+      parts,
+    }: {
+      transactionId: string
+      parts: SplitPart[]
+    }) => {
+      if (parts.length < 2) throw new Error('A split needs at least two parts.')
+      if (parts.some((p) => !(p.amount > 0)))
+        throw new Error('Every part needs an amount above zero.')
+
+      const db = getSupabase()
+      const { data: original, error: readError } = await db
+        .from('transactions')
+        .select('*')
+        .eq('id', transactionId)
+        .single()
+      if (readError) throw readError
+
+      const total = toNumber(original.amount)
+      const sum = parts.reduce((acc, p) => acc + p.amount, 0)
+      // Compared in paisa: 0.1 + 0.2 is famously not 0.3 in binary floating
+      // point, and refusing a split that visibly adds up would be baffling.
+      if (Math.round(sum * 100) !== Math.round(total * 100)) {
+        throw new Error(
+          `The parts add up to ${sum.toFixed(2)}, but the payment was ${total.toFixed(2)}.`,
+        )
+      }
+
+      const groupId = crypto.randomUUID()
+      const [first, ...rest] = parts
+
+      const { error: updateError } = await db
+        .from('transactions')
+        .update({
+          amount: first!.amount,
+          category_id: first!.categoryId ?? null,
+          note: first!.note ?? original.note,
+          split_group_id: groupId,
+          status: 'cleared',
+        })
+        .eq('id', transactionId)
+      if (updateError) throw updateError
+
+      const { error: insertError } = await db.from('transactions').insert(
+        rest.map((part) => ({
+          user_id: original.user_id,
+          account_id: original.account_id,
+          counterparty_account_id: original.counterparty_account_id,
+          type: original.type,
+          amount: part.amount,
+          currency: original.currency,
+          occurred_at: original.occurred_at,
+          category_id: part.categoryId ?? null,
+          merchant_id: original.merchant_id,
+          note: part.note ?? null,
+          source: 'split' as const,
+          status: 'cleared' as const,
+          split_group_id: groupId,
+        })),
+      )
+      if (insertError) throw insertError
+
+      return { groupId, parts: parts.length }
+    },
+    onSuccess: () => invalidateLedger(qc),
+  })
+}
+
+/**
+ * Records that someone is expected to pay part of this back.
+ *
+ * The row stays a full expense, because the money genuinely left the account.
+ * Treating the reimbursable half as income when it returns would inflate both
+ * sides of the ledger; the claim is tracked beside the payment instead, and
+ * settling it links the two rather than inventing a third.
+ */
+export function useSetOwed() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      transactionId,
+      owedBy,
+      owedAmount,
+    }: {
+      transactionId: string
+      owedBy: string | null
+      owedAmount: number | null
+    }) => {
+      const clearing = owedAmount == null || !owedBy?.trim()
+      const { error } = await getSupabase()
+        .from('transactions')
+        .update(
+          clearing
+            ? { owed_by: null, owed_amount: null, settled_by_id: null }
+            : { owed_by: owedBy!.trim(), owed_amount: owedAmount },
+        )
+        .eq('id', transactionId)
+      if (error) throw error
+    },
+    onSuccess: () => invalidateLedger(qc),
+  })
+}
+
+/** Marks a claim repaid by pointing at the payment that repaid it. */
+export function useSettleOwed() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      transactionId,
+      settledById,
+    }: {
+      transactionId: string
+      settledById: string | null
+    }) => {
+      const { error } = await getSupabase()
+        .from('transactions')
+        .update({ settled_by_id: settledById })
+        .eq('id', transactionId)
+      if (error) throw error
+    },
+    onSuccess: () => invalidateLedger(qc),
+  })
+}
+
+/** Outstanding claims — what people still owe you, newest first. */
+export function useOwedToYou() {
+  return useQuery({
+    queryKey: [...transactionKeys.all, 'owed'],
+    queryFn: async (): Promise<TransactionRow[]> => {
+      const { data, error } = await getSupabase()
+        .from('transactions')
+        .select(ROW_SELECT)
+        .not('owed_amount', 'is', null)
+        .is('settled_by_id', null)
+        .neq('status', 'void')
+        .order('occurred_at', { ascending: false })
+        .returns<TransactionRow[]>()
+      if (error) throw error
+      return data ?? []
+    },
   })
 }

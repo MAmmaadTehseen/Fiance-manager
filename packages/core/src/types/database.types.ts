@@ -569,9 +569,13 @@ export type Database = {
           merchant_id: string | null
           note: string | null
           occurred_at: string
+          owed_amount: number | null
+          owed_by: string | null
+          settled_by_id: string | null
           sms_message_id: string | null
           sms_message_id_2: string | null
           source: Database["public"]["Enums"]["transaction_source"]
+          split_group_id: string | null
           status: Database["public"]["Enums"]["transaction_status"]
           tags: string[]
           type: Database["public"]["Enums"]["transaction_type"]
@@ -591,9 +595,13 @@ export type Database = {
           merchant_id?: string | null
           note?: string | null
           occurred_at?: string
+          owed_amount?: number | null
+          owed_by?: string | null
+          settled_by_id?: string | null
           sms_message_id?: string | null
           sms_message_id_2?: string | null
           source?: Database["public"]["Enums"]["transaction_source"]
+          split_group_id?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
           tags?: string[]
           type: Database["public"]["Enums"]["transaction_type"]
@@ -613,9 +621,13 @@ export type Database = {
           merchant_id?: string | null
           note?: string | null
           occurred_at?: string
+          owed_amount?: number | null
+          owed_by?: string | null
+          settled_by_id?: string | null
           sms_message_id?: string | null
           sms_message_id_2?: string | null
           source?: Database["public"]["Enums"]["transaction_source"]
+          split_group_id?: string | null
           status?: Database["public"]["Enums"]["transaction_status"]
           tags?: string[]
           type?: Database["public"]["Enums"]["transaction_type"]
@@ -663,6 +675,13 @@ export type Database = {
             columns: ["merchant_id", "user_id"]
             isOneToOne: false
             referencedRelation: "merchants"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "transactions_settled_by_fkey"
+            columns: ["settled_by_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
             referencedColumns: ["id", "user_id"]
           },
           {
