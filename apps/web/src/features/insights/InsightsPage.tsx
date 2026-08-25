@@ -4,6 +4,7 @@ import { ChartNoAxesColumn, Repeat, Store, Tags } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
 import { EmptyState } from '@/components/EmptyState'
 import { Chip } from '@/components/Chip'
+import { BillsAhead } from './BillsAhead'
 import { Card, Avatar } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import {
@@ -274,6 +275,8 @@ export function InsightsPage() {
               }
             />
           </div>
+
+          <BillsAhead />
 
           {months.length > 1 && <MonthBars months={months} />}
 

@@ -13,7 +13,7 @@ import {
   useCreateSavingsGoal,
   useDeleteBudget,
   useDeleteSavingsGoal,
-  useRecurring,
+  useUpcomingBills,
   useSavingsGoals,
   useTransactions,
   useUpdateSavingsGoal,
@@ -315,7 +315,7 @@ function GoalsView() {
 
 function RecurringView() {
   const colors = useColors()
-  const recurring = useRecurring()
+  const recurring = useUpcomingBills()
 
   return (
     <Card>
@@ -325,6 +325,41 @@ function RecurringView() {
           <Text style={{ color: colors.sub, fontSize: 13 }}>~{formatMoney(recurring.monthlyTotal)}/mo</Text>
         )}
       </View>
+
+      {/* What is still to come out, and anything that landed above its own
+          usual — the two questions people have about their commitments. */}
+      {recurring.stillToCome > 0 ? (
+        <Text style={{ color: colors.sub, fontSize: 13 }}>
+          {formatMoney(recurring.stillToCome)} still to come out this month
+        </Text>
+      ) : null}
+
+      {recurring.bills
+        .filter((b) => b.spike != null)
+        .map((b) => (
+          <View
+            key={`spike-${b.item.key}`}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              backgroundColor: colors.goldSoft,
+              borderRadius: 10,
+              paddingHorizontal: 10,
+              paddingVertical: 8,
+            }}
+          >
+            <Text
+              numberOfLines={2}
+              style={{ flex: 1, fontSize: 12.5, fontWeight: '700', color: colors.goldInk }}
+            >
+              {b.item.name} came in {Math.round((b.spike ?? 0) * 100)}% above its usual
+            </Text>
+            <Text style={{ fontSize: 12.5, fontWeight: '700', color: colors.goldInk }}>
+              {formatMoney(b.item.amounts[b.item.amounts.length - 1] ?? 0)}
+            </Text>
+          </View>
+        ))}
       {recurring.items.length === 0 ? (
         <Text style={{ color: colors.sub, fontSize: 13.5, lineHeight: 20 }}>
           Nothing detected yet. When a charge from the same place shows up across a
@@ -339,7 +374,17 @@ function RecurringView() {
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={{ color: colors.ink, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>{r.name}</Text>
               <Text style={{ color: colors.sub, fontSize: 12 }}>
-                {r.categoryName ? `${r.categoryName} · ` : ''}{r.occurrences} charges over {r.months} months
+                {r.categoryName ? `${r.categoryName} · ` : ''}
+                {(() => {
+                  const bill = recurring.bills.find((b) => b.item.key === r.key)
+                  if (!bill) return `${r.occurrences} charges over ${r.months} months`
+                  if (bill.paid) return 'paid this month'
+                  const d = bill.daysAway ?? 0
+                  if (d < 0) return `${Math.abs(d)}d overdue`
+                  if (d === 0) return 'due today'
+                  if (d === 1) return 'due tomorrow'
+                  return `in ${d} days`
+                })()}
               </Text>
             </View>
             <Money value={r.amount} currency={r.currency} style={{ color: colors.ink, fontSize: 14 }} />

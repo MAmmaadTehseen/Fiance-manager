@@ -174,6 +174,13 @@ const MONTHS: Record<string, number> = {
  * Returns null rather than guessing — the caller falls back to the time the
  * phone received the message, which is accurate to within seconds anyway.
  */
+/**
+ * Currency markers that mean "this is not rupees". Deliberately narrow: it
+ * only has to catch a symbol or code sitting against the captured amount, and
+ * a false positive costs one Inbox entry rather than a wrong number.
+ */
+const FOREIGN_CURRENCY = /[$€£¥]|\b(?:USD|EUR|GBP|AED|SAR|CAD|AUD)\b/i
+
 export function parseDateTime(raw: string | undefined): Date | null {
   if (!raw) return null
   const s = raw.trim()
@@ -364,10 +371,22 @@ export function parseSms(
     }
 
     const f = template.field_patterns ?? {}
-    const amount = parseAmount(extractField(f.amount, text) ?? undefined)
+    const rawAmount = extractField(f.amount, text)
+    const amount = parseAmount(rawAmount ?? undefined)
     // Without an amount there is no transaction to make. Keep looking — a
     // later template may match the same message properly.
     if (amount === null) continue
+
+    // Refuse an amount that is plainly not rupees.
+    //
+    // Nothing downstream carries a currency: the pipeline books every parsed
+    // amount as PKR. That is fine while every template is a local bank alert,
+    // and quietly catastrophic the first time one matches a dollar receipt —
+    // a $100 charge would enter the ledger as Rs 100. A template that wants
+    // foreign currency has to earn it by adding real support, not by slipping
+    // through. Leaving the message unmatched puts it in the Inbox where it is
+    // visible, which is the right failure.
+    if (rawAmount && FOREIGN_CURRENCY.test(rawAmount)) continue
 
     const merchantRawUncut = extractField(f.merchant, text)
     // A template may have stopped the merchant capture early at the word "on"
