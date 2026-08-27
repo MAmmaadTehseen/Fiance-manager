@@ -100,13 +100,29 @@ eq(
 eq(parseDateTime('12-Aug-25 02:30 PM')?.getUTCHours(), 9, 'meridiem: 2:30pm PKT -> 09 UTC')
 eq(parseDateTime('not a date'), null, 'unparseable is null')
 
+/**
+ * A sender the template will accept, so its sample is actually exercised.
+ *
+ * Email templates key on an `@` sender, so feeding them a shortcode like 'HBL'
+ * means the sender test fails before the body is ever looked at — and the
+ * sample check then reports the template as broken when it is fine. Email is
+ * the primary capture channel, so all of its templates were being reported
+ * that way. Derive the address from the pattern instead: `@ubl\.com\.pk`
+ * becomes alerts@ubl.com.pk, and a bare `@` becomes any address at all.
+ */
+function senderFor(t: ParserTemplate): string {
+  if (!t.sender_pattern.includes('@')) return SENDERS[t.bank_key] ?? 'SomeBank'
+  const domain = t.sender_pattern.replace(/\\/g, '').replace(/^.*@/, '')
+  return `alerts@${domain || 'bank.example'}`
+}
+
 console.log('== every seeded template parses its own sample ==')
 for (const t of templates) {
   if (!t.sample) {
     no(`${t.label} has no sample`, t.bank_key)
     continue
   }
-  const sender = SENDERS[t.bank_key] ?? 'SomeBank'
+  const sender = senderFor(t)
   const r = parseSms(sender, t.sample, [t])
 
   if (!r.matched) {
@@ -401,6 +417,122 @@ console.log('== a merchant containing "on" survives a dated terminator ==')
   else
     no('merchant truncated at the word "on"', r.matched ? r.fields.merchant : 'no match')
 }
+
+console.log('== bank email: the shapes a real inbox actually sends ==')
+
+// Email is the primary capture channel, yet every case above is an SMS. These
+// come from a month of real bank mail, with names, accounts and references
+// replaced — the wording, punctuation and field layout are what matter and are
+// reproduced exactly, including the doubled colons Faysal emits.
+const emails: {
+  label: string
+  sender: string
+  body: string
+  amount: number
+  /** UTC instant, as ISO, that the body's wall-clock PKT time means. */
+  when: string | null
+  payee: string | null
+  last4: string | null
+}[] = [
+  {
+    // Faysal's IBFT *credit* splits the moment across two labels, unlike its
+    // debit, which uses one `Date and Time`. With only the debit's pattern the
+    // date parsed to nothing and the transaction fell back to when the 15-min
+    // cron happened to sync it.
+    label: 'Faysal IBFT credit (Transaction Date and Transaction Time apart)',
+    sender: 'Faysal Bank <efbl@faysalbank.com>',
+    body:
+      'Dear ACCOUNT HOLDER,: Your account has been credited via Inter Bank Funds Transfer. ' +
+      'Below are the transaction details: : Receiver Name:: ACCOUNT HOLDER: Receiver Bank:: FBL: ' +
+      'Receiver Account No:: 3430****************5555: Sender Name:: AHMED KHAN: Sender Bank:: MBL: ' +
+      'Sender Account No:: PK35****************4444: Transaction Date:: 23-Aug-2026: ' +
+      'Transaction Time:: 04:10 PM: Amount Transferred:: PKR 20,000.00/-: ' +
+      'Transaction Reference:: 1946977346:',
+    amount: 20000,
+    when: '2026-08-23T11:10:00.000Z',
+    payee: 'Ahmed Khan',
+    last4: '5555',
+  },
+  {
+    label: 'Faysal IBFT debit (single Date and Time label)',
+    sender: 'Faysal Bank Limited <efbl@faysalbank.com>',
+    body:
+      'Dear Customer, Your account has been debited via Inter Bank Funds Transfer. ' +
+      'Below are the transaction details: Receiver Name:: SADIA NOOR : ' +
+      'Receiver Account Number:: 0355***2455 : Receiver Bank:: Easypaisa Bank Ltd : ' +
+      'Sender Account Number:: 3430********5555 : Sender Bank:: FBL: ' +
+      'Transaction Amount:: PKR 130.00 : Date and Time:: 18-AUG-2026 06:45 AM : ' +
+      'Transaction Reference:: 215536',
+    amount: 130,
+    when: '2026-08-18T01:45:00.000Z',
+    payee: 'Sadia Noor',
+    last4: '5555',
+  },
+  {
+    // UBL had no email template at all and was being claimed by the generic
+    // SMS "transfer sent" rule, which found the amount and nothing else — the
+    // reason a UBL payment showed as **** in the ledger.
+    //
+    // last4 is deliberately null: UBL masks the account to two digits
+    // (32*****33), and inventing a four-digit key from that could match the
+    // wrong account. Sender-to-account mapping resolves it instead.
+    label: 'UBL Raast payment email',
+    sender: '<admin.ebanking@ubl.com.pk>',
+    body:
+      ' Dear ACCOUNT HOLDER , You paid PKR. 1.00 to AHMED KHAN via Raast. Here are the details: ' +
+      'Account Title: ACCOUNT HOLDER Account Details: Town, City - 32*****33 ' +
+      'Date: 21-Aug-2026 Time: 12:41:27 AM Transaction ID: 1328017674 ' +
+      'Transaction Type: Inter Bank Funds Transfer Raast',
+    amount: 1,
+    when: '2026-08-20T19:41:27.000Z',
+    payee: 'Ahmed Khan',
+    last4: null,
+  },
+  {
+    // Meezan quotes a 24-hour time under its own label; "17:30" must not be
+    // read as 5:30am, which once put the two halves of one transfer 12 hours
+    // apart and booked the payment twice.
+    label: 'Meezan credit (24-hour time under a separate label)',
+    sender: 'Meezan Bank Alert <no-reply@meezanbank.com>',
+    body:
+      ': Dear Customer, PKR 7,400.00 received to your account xxx4444 with the following details: ' +
+      'Beneficiary Account : A.KHAN AC# RAAST PYMT PK94FAYS34307 Branch : SOME BRANCH ' +
+      'Transaction Date : 24-Aug-2026 Transaction Time : 17:30 :',
+    amount: 7400,
+    when: '2026-08-24T12:30:00.000Z',
+    payee: 'A Khan',
+    last4: '4444',
+  },
+]
+
+for (const c of emails) {
+  const r = parseSms(c.sender, c.body, templates)
+  if (!r.matched) {
+    no(`${c.label}: matched no template`, c.body.slice(0, 60))
+    continue
+  }
+  if (r.kind === 'ignore') {
+    no(`${c.label}: was ignored`, r.template.label)
+    continue
+  }
+  eq(r.fields.amount, c.amount, `${c.label}: amount`)
+  eq(r.fields.occurredAt, c.when, `${c.label}: date and time`)
+  eq(r.fields.merchant, c.payee, `${c.label}: payee`)
+  eq(r.fields.last4, c.last4, `${c.label}: account`)
+}
+
+console.log('== email priced only in a foreign currency is never booked in PKR ==')
+// A Namecheap receipt quotes $3.08 and no PKR anywhere. Only the bank knows
+// what it converted to, so booking 3.08 as rupees would be an invented number.
+const usdOnly = parseSms(
+  'Namecheap Support <support@namecheap.com>',
+  'Namecheap Order Summary Order Number : 211965006 Payment source : Credit Card ' +
+    '***(* * * * 5016) Initial Charge : $3.08 Final Cost : $3.08',
+  templates,
+)
+if (usdOnly.matched && usdOnly.kind !== 'ignore' && usdOnly.fields.amount != null)
+  no('a USD-only receipt was booked as rupees', usdOnly.fields.amount)
+else ok('USD-only receipt books nothing')
 
 console.log('== unknown senders fall through cleanly ==')
 const junk = parseSms('MOM', 'are you coming home for dinner?', templates)
