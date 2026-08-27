@@ -25,20 +25,31 @@ immediately.
 
 ## Capture channels (how transactions get in)
 
-1. **Email — primary, recommended.** One-tap **Connect Gmail** (OAuth).
-   `gmail-connect` stores a refresh token server-side (never in the browser);
-   `gmail-sync` (15-min cron + on-connect + a "Sync now" button) reads bank
-   emails, stores each as an `sms_messages` row, and runs the **same pipeline**
-   as SMS. Play-safe, reliable, works on iPhone too. Email parser templates are
-   keyed on an `@` sender so they only match email.
-2. **SMS — optional, power-user.** The native Android app reads bank SMS and
-   POSTs to `sms-ingest`. Sideload-only (Google Play restricts SMS) and fights
-   OEM battery managers — kept as an extra, not the default.
-3. **Manual** — add by hand.
+**All channels run in parallel — none is a fallback for another.** Each one
+catches things the others miss: email carries the richest detail but only for
+banks that send it, SMS arrives instantly and covers banks that never email,
+and the notification listener catches app-only alerts (wallets that neither
+email nor SMS). Running them together and de-duplicating is strictly better
+than ranking them, so nothing waits on another channel failing first.
+
+Overlap is expected and handled: every channel stores its message as an
+`sms_messages` row and runs the **same pipeline**, and `dedupe_hash` collapses
+one payment seen through two or three channels into a single transaction. See
+the cross-channel dedup notes in `_shared/pipeline.ts`.
+
+1. **Email.** One-tap **Connect Gmail** (OAuth). `gmail-connect` stores a
+   refresh token server-side (never in the browser); `gmail-sync` (15-min cron
+   + on-connect + a "Sync now" button) reads bank email. Works on iPhone too.
+   Email parser templates are keyed on an `@` sender so they only match email.
+2. **SMS.** The native Android app reads bank SMS and POSTs to `sms-ingest`.
+   Sideload-only (Google Play restricts SMS) and fights OEM battery managers.
+3. **Notifications.** An Android notification listener picks up alerts from
+   banking and wallet apps that send neither email nor SMS. Opt-in per app.
+4. **Manual** — add by hand.
 
 MacroDroid / third-party SMS forwarders are **retired** — do not reintroduce.
 
-## The pipeline (shared by SMS + email)
+## The pipeline (shared by every channel)
 
 `supabase/functions/_shared/pipeline.ts` (`processStoredMessage`) +
 `_shared/parser.ts`. A stored message → parsed via DB `parser_templates` (regex
