@@ -59,6 +59,9 @@ function AccountSheet({
   const [name, setName] = useState(account?.name ?? '')
   const [type, setType] = useState<AccountType>(account?.type ?? 'bank')
   const [last4, setLast4] = useState(account?.last4 ?? '')
+  const [institution, setInstitution] = useState(account?.institution ?? '')
+  const [senders, setSenders] = useState<string[]>(account?.sms_senders ?? [])
+  const [isPrimary, setIsPrimary] = useState(account?.is_primary ?? false)
   const [opening, setOpening] = useState(
     account ? String(toNumber(account.opening_balance)) : '',
   )
@@ -78,13 +81,17 @@ function AccountSheet({
           name,
           type,
           last4,
+          institution,
           opening_balance: parseAmount(opening) ?? 0,
+          is_primary: isPrimary,
+          sms_senders: senders,
         })
       } else {
         await create.mutateAsync({
           name: name.trim(),
           type,
           last4,
+          institution,
           opening_balance: parseAmount(opening) ?? 0,
         })
       }
@@ -185,6 +192,17 @@ function AccountSheet({
           </View>
 
           <View style={{ gap: 8 }}>
+            <Text style={label}>Bank</Text>
+            <TextInput
+              value={institution}
+              onChangeText={setInstitution}
+              placeholder="e.g. Meezan Bank"
+              placeholderTextColor={colors.sub}
+              style={inputStyle}
+            />
+          </View>
+
+          <View style={{ gap: 8 }}>
             <Text style={label}>Last digits</Text>
             <TextInput
               value={last4}
@@ -217,6 +235,71 @@ function AccountSheet({
               What&rsquo;s in it right now. Everything is counted from here.
             </Text>
           </View>
+
+          {editing ? (
+            <>
+              <Pressable
+                onPress={() => setIsPrimary((v) => !v)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+              >
+                <View
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 6,
+                    borderWidth: 1.5,
+                    borderColor: isPrimary ? colors.brand : colors.line,
+                    backgroundColor: isPrimary ? colors.brand : 'transparent',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {isPrimary ? (
+                    <Text style={{ color: colors.brandOn, fontSize: 12, fontWeight: '900' }}>
+                      ✓
+                    </Text>
+                  ) : null}
+                </View>
+                <Text style={{ color: colors.ink, fontSize: 14 }}>Main account</Text>
+                <Text style={{ color: colors.sub, fontSize: 12 }}>(only one can be)</Text>
+              </Pressable>
+
+              {senders.length > 0 ? (
+                <View style={{ gap: 8 }}>
+                  <Text style={label}>Senders mapped here</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {senders.map((sender) => (
+                      <Pressable
+                        key={sender}
+                        onPress={() =>
+                          setSenders((prev) => prev.filter((x) => x !== sender))
+                        }
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 6,
+                          borderRadius: 999,
+                          borderWidth: 1,
+                          borderColor: colors.line,
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                        }}
+                      >
+                        <Text style={{ color: colors.sub, fontSize: 12 }} numberOfLines={1}>
+                          {sender}
+                        </Text>
+                        <Text style={{ color: colors.sub, fontSize: 12 }}>✕</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <Text style={{ color: colors.sub, fontSize: 12 }}>
+                    Messages from these are booked here whatever digits they
+                    quote. Tap one to unlink it.
+                  </Text>
+                </View>
+              ) : null}
+            </>
+          ) : null}
 
           <Button
             label={editing ? 'Save changes' : 'Add account'}

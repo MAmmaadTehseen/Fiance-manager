@@ -104,6 +104,26 @@ signups. Expo project id: `6d023af2-8e41-404e-b250-3d16f6d61ac6`.
 - **Web deploys are automatic** on push/merge to `master`/`develop` — no CLI.
 - **Supabase / EAS deploys** run via CLI and need the tokens below.
 
+### The phone is not a follow-up — ship it in the same breath
+
+**Any change touching app code ships an OTA in the same turn as the push.** The
+owner uses the Android app most of the time, so "web is live, mobile later"
+means the change is not delivered at all for the person who asked for it, and
+the two apps drift into different products between sessions.
+
+    EXPO_TOKEN=… npx eas-cli update --branch preview \
+      --environment preview -m "…" --non-interactive
+
+That covers shared `packages/core` too, since the phone bundles it — a hook fix
+is not shipped to mobile until an OTA goes out, however green the web deploy is.
+Verify with `npx eas-cli channel:view preview`: the update's commit should be
+HEAD. Only a docs-, migration- or Edge-Function-only change needs no OTA,
+because the phone's bundle is unchanged.
+
+**Parity is part of "done", not a later task.** A feature added to `apps/web`
+without its `apps/mobile` counterpart is half-delivered; build both, or say
+plainly which half is missing and why.
+
 ## Deploy (reference)
 
 Tokens live in `.env.deploy.local` locally (gitignored) and, in the cloud, in
