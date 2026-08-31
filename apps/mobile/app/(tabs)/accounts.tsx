@@ -1,18 +1,22 @@
 /**
- * Accounts — every place the money sits, and the form to add one. Mirrors the
- * web Accounts page: the largest account gets the brand fill so the eye lands
- * on where most of the money is.
+ * Accounts — every place the money sits, and the sheet to add or correct one.
+ * Mirrors the web Accounts page: the largest account gets the brand fill so
+ * the eye lands on where most of the money is, and tapping any card opens it
+ * for editing.
  */
 import { useState } from 'react'
 import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native'
 import {
   useAccountBalances,
+  useAccounts,
   useCreateAccount,
+  useRemoveAccount,
+  useUpdateAccount,
   formatMoney,
   parseAmount,
   toNumber,
+  type Account,
   type AccountType,
-  type NewAccount,
 } from '@batwa/core'
 import {
   Button,
@@ -33,25 +37,79 @@ const ACCOUNT_TYPES: { value: AccountType; label: string }[] = [
   { value: 'savings', label: 'Savings' },
 ]
 
-function AddAccount({ onClose }: { onClose: () => void }) {
+/**
+ * Add an account, or correct one — the same fields either way, so the same
+ * sheet. Accounts used to be create-only, which made a mistyped last4
+ * permanent, and that is the field that decides whether a bank message finds
+ * its account or lands in the Inbox.
+ */
+function AccountSheet({
+  account,
+  onClose,
+}: {
+  account?: Account
+  onClose: () => void
+}) {
   const colors = useColors()
+  const editing = account != null
   const create = useCreateAccount()
-  const [form, setForm] = useState<NewAccount>({ name: '', type: 'bank' })
-  const [opening, setOpening] = useState('')
+  const update = useUpdateAccount()
+  const remove = useRemoveAccount()
+
+  const [name, setName] = useState(account?.name ?? '')
+  const [type, setType] = useState<AccountType>(account?.type ?? 'bank')
+  const [last4, setLast4] = useState(account?.last4 ?? '')
+  const [opening, setOpening] = useState(
+    account ? String(toNumber(account.opening_balance)) : '',
+  )
+  const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [note, setNote] = useState<string | null>(null)
+
+  const busy = create.isPending || update.isPending || remove.isPending
 
   async function save() {
     setError(null)
-    if (!form.name.trim()) return setError('Give the account a name.')
+    if (!name.trim()) return setError('Give the account a name.')
     try {
-      await create.mutateAsync({
-        ...form,
-        name: form.name.trim(),
-        opening_balance: parseAmount(opening) ?? 0,
-      })
+      if (editing) {
+        await update.mutateAsync({
+          id: account.id,
+          name,
+          type,
+          last4,
+          opening_balance: parseAmount(opening) ?? 0,
+        })
+      } else {
+        await create.mutateAsync({
+          name: name.trim(),
+          type,
+          last4,
+          opening_balance: parseAmount(opening) ?? 0,
+        })
+      }
       onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save')
+    }
+  }
+
+  async function drop() {
+    setError(null)
+    try {
+      const result = await remove.mutateAsync(account!.id)
+      // Whether history survived is the whole difference, so say it.
+      if (result.deleted) onClose()
+      else {
+        setNote(
+          `Hidden, not deleted — ${result.transactions} transaction${result.transactions === 1 ? '' : 's'} still reference it and stay in your ledger.`,
+        )
+        setConfirming(false)
+        setTimeout(onClose, 2200)
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not remove')
+      setConfirming(false)
     }
   }
 
@@ -82,7 +140,7 @@ function AddAccount({ onClose }: { onClose: () => void }) {
           }}
         >
           <Text style={{ color: colors.ink, fontSize: 18, fontWeight: '800' }}>
-            Add account
+            {editing ? 'Edit account' : 'Add account'}
           </Text>
           <Pressable onPress={onClose} hitSlop={12}>
             <Text style={{ color: colors.sub, fontSize: 22 }}>✕</Text>
@@ -95,12 +153,17 @@ function AddAccount({ onClose }: { onClose: () => void }) {
               <Text style={{ color: colors.neg, fontSize: 13.5 }}>{error}</Text>
             </View>
           )}
+          {note && (
+            <View style={{ backgroundColor: colors.soft, borderRadius: 12, padding: 12 }}>
+              <Text style={{ color: colors.sub, fontSize: 13.5 }}>{note}</Text>
+            </View>
+          )}
 
           <View style={{ gap: 8 }}>
             <Text style={label}>Name</Text>
             <TextInput
-              value={form.name}
-              onChangeText={(name) => setForm({ ...form, name })}
+              value={name}
+              onChangeText={setName}
               placeholder="e.g. Meezan current"
               placeholderTextColor={colors.sub}
               style={inputStyle}
@@ -114,8 +177,8 @@ function AddAccount({ onClose }: { onClose: () => void }) {
                 <Chip
                   key={t.value}
                   label={t.label}
-                  active={form.type === t.value}
-                  onPress={() => setForm({ ...form, type: t.value })}
+                  active={type === t.value}
+                  onPress={() => setType(t.value)}
                 />
               ))}
             </View>
@@ -124,8 +187,8 @@ function AddAccount({ onClose }: { onClose: () => void }) {
           <View style={{ gap: 8 }}>
             <Text style={label}>Last digits</Text>
             <TextInput
-              value={form.last4 ?? ''}
-              onChangeText={(last4) => setForm({ ...form, last4 })}
+              value={last4}
+              onChangeText={setLast4}
               placeholder="e.g. 4821"
               placeholderTextColor={colors.sub}
               keyboardType="number-pad"
@@ -133,12 +196,15 @@ function AddAccount({ onClose }: { onClose: () => void }) {
               style={inputStyle}
             />
             <Text style={{ color: colors.sub, fontSize: 12 }}>
-              How bank SMS finds this account automatically. Optional now, needed for SMS capture.
+              How bank messages find this account. Get it wrong and they land in
+              the Inbox instead.
             </Text>
           </View>
 
           <View style={{ gap: 8 }}>
-            <Text style={label}>Current balance</Text>
+            <Text style={label}>
+              {editing ? 'Starting balance' : 'Current balance'}
+            </Text>
             <TextInput
               value={opening}
               onChangeText={setOpening}
@@ -152,7 +218,48 @@ function AddAccount({ onClose }: { onClose: () => void }) {
             </Text>
           </View>
 
-          <Button label="Add account" onPress={save} busy={create.isPending} />
+          <Button
+            label={editing ? 'Save changes' : 'Add account'}
+            onPress={save}
+            busy={busy}
+          />
+
+          {editing ? (
+            confirming ? (
+              <View
+                style={{
+                  gap: 10,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: colors.neg,
+                  padding: 12,
+                }}
+              >
+                <Text style={{ color: colors.ink, fontSize: 13.5, lineHeight: 19 }}>
+                  Remove {account.name}? If it has transactions it is hidden
+                  rather than deleted, and they stay in your ledger.
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <Pressable onPress={drop} disabled={busy} hitSlop={8}>
+                    <Text style={{ color: colors.neg, fontSize: 14, fontWeight: '700' }}>
+                      Remove
+                    </Text>
+                  </Pressable>
+                  <Pressable onPress={() => setConfirming(false)} hitSlop={8}>
+                    <Text style={{ color: colors.sub, fontSize: 14, fontWeight: '600' }}>
+                      Keep it
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <Pressable onPress={() => setConfirming(true)} hitSlop={8}>
+                <Text style={{ color: colors.neg, fontSize: 14, fontWeight: '600' }}>
+                  Remove account
+                </Text>
+              </Pressable>
+            )
+          ) : null}
         </ScrollView>
       </View>
     </Modal>
@@ -162,8 +269,12 @@ function AddAccount({ onClose }: { onClose: () => void }) {
 export default function AccountsScreen() {
   const colors = useColors()
   const [adding, setAdding] = useState(false)
+  // The id, not the row, so an open sheet reflects the latest fetch.
+  const [editing, setEditing] = useState<string | null>(null)
   const { data: accounts = [], isLoading, refetch, isRefetching } =
     useAccountBalances()
+  const { data: full = [] } = useAccounts()
+  const editingAccount = full.find((a) => a.id === editing)
 
   const total = accounts.reduce((sum, a) => sum + toNumber(a.balance), 0)
 
@@ -208,8 +319,10 @@ export default function AccountsScreen() {
           {accounts.map((a, i) => {
             const featured = i === 0
             return (
-              <View
+              <Pressable
                 key={a.account_id}
+                onPress={() => setEditing(a.account_id)}
+                accessibilityLabel={`Edit ${a.name}`}
                 style={{
                   borderRadius: 22,
                   padding: 22,
@@ -277,13 +390,16 @@ export default function AccountsScreen() {
                     style={{ color: featured ? colors.brandOn : colors.ink, fontSize: 28, marginTop: 3, fontWeight: '800' }}
                   />
                 </View>
-              </View>
+              </Pressable>
             )
           })}
         </View>
       )}
 
-      {adding && <AddAccount onClose={() => setAdding(false)} />}
+      {adding && <AccountSheet onClose={() => setAdding(false)} />}
+      {editingAccount && (
+        <AccountSheet account={editingAccount} onClose={() => setEditing(null)} />
+      )}
     </Screen>
   )
 }
