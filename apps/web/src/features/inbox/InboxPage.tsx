@@ -25,7 +25,7 @@ import {
   useDismissMessage,
   type OpenMessage,
 } from '@batwa/core'
-import type { TransactionRow } from '@batwa/core'
+import type { ReviewRow } from '@batwa/core'
 
 const CARD = 'flex flex-col gap-3.5 rounded-[22px] p-5'
 
@@ -66,7 +66,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 /** A captured transaction the pipeline could not categorise. */
-function ReviewCard({ tx }: { tx: TransactionRow }) {
+function ReviewCard({ tx }: { tx: ReviewRow }) {
+  const [showOriginal, setShowOriginal] = useState(false)
   const categorise = useCategorise()
   const { data: categories = [] } = useCategories(
     tx.type === 'income' ? 'income' : 'expense',
@@ -90,6 +91,22 @@ function ReviewCard({ tx }: { tx: TransactionRow }) {
         </Field>
         <Field label="Account">{tx.account?.name ?? '—'}</Field>
       </div>
+
+      {/* The message the bank actually sent. The parsed fields are a summary,
+          and a summary is exactly what you cannot rely on when deciding what
+          something was — a 2,000 transfer whose payee did not parse is
+          unanswerable without the original text. */}
+      {tx.sms_message && (
+        <button
+          type="button"
+          onClick={() => setShowOriginal((v) => !v)}
+          className="rounded-xl bg-soft px-3.5 py-3 text-left font-mono text-[13px] leading-[1.55] text-sub"
+        >
+          <span className={showOriginal ? '' : 'line-clamp-2'}>
+            {tx.sms_message.body}
+          </span>
+        </button>
+      )}
 
       <p className="m-0 text-[13px] font-semibold text-sub">What was this?</p>
       <div className="flex flex-wrap gap-2">

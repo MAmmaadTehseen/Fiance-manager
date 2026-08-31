@@ -16,10 +16,27 @@ export type OpenMessage = Omit<SmsMessage, 'parsed'> & {
 }
 
 /** Transactions the pipeline created but could not categorise. */
+/**
+ * A transaction awaiting a category, carrying the message it came from.
+ *
+ * The parsed fields are a summary, and a summary is exactly what you cannot
+ * rely on when deciding what something was: a 2,000 transfer with no payee
+ * read is unanswerable without the text the bank actually sent. So the
+ * original travels with it.
+ */
+export type ReviewRow = TransactionRow & {
+  sms_message: {
+    id: string
+    sender: string
+    body: string
+    received_at: string
+  } | null
+}
+
 export function useReviewQueue() {
   return useQuery({
     queryKey: [...transactionKeys.all, 'review'],
-    queryFn: async (): Promise<TransactionRow[]> => {
+    queryFn: async (): Promise<ReviewRow[]> => {
       const { data, error } = await getSupabase()
         .from('transactions')
         .select(
@@ -27,11 +44,12 @@ export function useReviewQueue() {
            account:accounts!transactions_account_id_fkey (id, name, type),
            counterparty_account:accounts!transactions_counterparty_account_id_fkey (id, name),
            category:categories (id, name, icon),
-           merchant:merchants (id, display_name)`,
+           merchant:merchants (id, display_name),
+           sms_message:sms_messages!transactions_sms_message_id_fkey (id, sender, body, received_at)`,
         )
         .eq('status', 'needs_review')
         .order('occurred_at', { ascending: false })
-        .returns<TransactionRow[]>()
+        .returns<ReviewRow[]>()
       if (error) throw error
       return data ?? []
     },

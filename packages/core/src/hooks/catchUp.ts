@@ -38,6 +38,21 @@ export async function catchUpWaiting(match: {
   if (error) throw error
 
   const ids = (data ?? []).map((m) => m.id)
+
+  // Knowing an account changes more than what was waiting on it. The pipeline
+  // decides whether a payment is an internal transfer by asking, as it parses,
+  // whether the counterparty's account exists — so every message that arrived
+  // before this account did was booked against a wrong answer, and replaying
+  // only the waiting ones leaves those wrong forever. `rebuild` drops the
+  // transactions the user has not filed yet and lets the pipeline conclude
+  // again; anything already categorised is settled and left alone.
+  if (match.last4) {
+    const { error: rebuildError } = await db.functions.invoke('sms-reprocess', {
+      body: { rebuild: true },
+    })
+    if (rebuildError) throw rebuildError
+  }
+
   if (ids.length === 0) return 0
 
   const { error: markError } = await db

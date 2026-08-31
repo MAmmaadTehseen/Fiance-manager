@@ -19,7 +19,7 @@ import {
   useReprocess,
   useReviewQueue,
   type OpenMessage,
-  type TransactionRow,
+  type ReviewRow,
 } from '@batwa/core'
 import {
   Card,
@@ -212,7 +212,7 @@ function SettledCard({ message }: { message: OpenMessage }) {
 
 // --------------------------------------------------------- what was this?
 
-function ReviewCard({ tx }: { tx: TransactionRow }) {
+function ReviewCard({ tx }: { tx: ReviewRow }) {
   const colors = useColors()
   const categorise = useCategorise()
   const { data: categories = [] } = useCategories(
@@ -230,6 +230,11 @@ function ReviewCard({ tx }: { tx: TransactionRow }) {
           style={{ marginLeft: 'auto', color: colors.ink, fontSize: 20 }}
         />
       </View>
+
+      {/* The message the bank actually sent. The parsed fields are a summary,
+          and a summary is what fails you here: a 2,000 transfer whose payee
+          did not parse is unanswerable without the original text. */}
+      {tx.sms_message ? <RawBody>{tx.sms_message.body}</RawBody> : null}
 
       <View style={{ gap: 6 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
