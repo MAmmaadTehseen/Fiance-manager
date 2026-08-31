@@ -1,5 +1,11 @@
 import { useState } from 'react'
-import { Inbox, RefreshCw, CreditCard, MessageSquareWarning } from 'lucide-react'
+import {
+  Check,
+  CreditCard,
+  Inbox,
+  MessageSquareWarning,
+  RefreshCw,
+} from 'lucide-react'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 import { PageHeader } from '@/components/PageHeader'
 import { EmptyState } from '@/components/EmptyState'
@@ -192,7 +198,6 @@ function UnknownCardCard({ message }: { message: OpenMessage }) {
                     sender: message.sender,
                   })
                 }
-                await reprocess.mutateAsync(undefined)
               }}
               className="rounded-full border border-line px-3 py-1.5 text-[13px] font-semibold text-sub transition-colors hover:border-brand hover:bg-brand hover:text-brand-on disabled:opacity-50"
             >
@@ -264,6 +269,54 @@ function UnreadableCard({ message }: { message: OpenMessage }) {
   )
 }
 
+/**
+ * A message that was waiting on you and no longer is.
+ *
+ * It stays until dismissed. Answering "which account is this?" is the moment
+ * you most want to read the thing — you have just been told a payment exists
+ * and shown nothing of what it was — and it used to vanish on the tap.
+ */
+function SettledCard({ message }: { message: OpenMessage }) {
+  const dismiss = useDismissMessage()
+  const amount = message.parsed?.amount
+
+  return (
+    <Card className={CARD}>
+      <div className="flex items-center gap-2.5">
+        <Tag>
+          {message.sender} · {ago(message.received_at)}
+        </Tag>
+        {amount != null && (
+          <span className="tabular ml-auto font-display text-xl font-bold">
+            {formatMoney(amount)}
+          </span>
+        )}
+      </div>
+
+      <p className="m-0 flex items-center gap-2 text-[14.5px] font-bold text-brand">
+        <Check className="size-4 shrink-0" aria-hidden />
+        {message.parse_status === 'duplicate'
+          ? 'Already had this one'
+          : 'Sorted — added to your ledger'}
+      </p>
+
+      <p className="m-0 rounded-xl bg-soft px-3.5 py-3 font-mono text-[13px] leading-[1.55] text-sub">
+        {message.body}
+      </p>
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => dismiss.mutate(message.id)}
+          className="h-10 rounded-[11px] border border-line px-4 text-[13.5px] font-semibold text-sub transition hover:bg-soft"
+        >
+          Done reading
+        </button>
+      </div>
+    </Card>
+  )
+}
+
 export function InboxPage() {
   const { data: review = [], isLoading: loadingReview } = useReviewQueue()
   const { data: messages = [], isLoading: loadingMessages } = useOpenMessages()
@@ -271,6 +324,14 @@ export function InboxPage() {
 
   const needsAccount = messages.filter((m) => m.parse_status === 'needs_account')
   const unreadable = messages.filter((m) => m.parse_status === 'unmatched')
+  // Answered, and kept on screen until read away. A message whose replay did
+  // not actually resolve it stays in the lists above, where it still belongs.
+  const settled = messages.filter(
+    (m) =>
+      m.resolved_at != null &&
+      m.parse_status !== 'needs_account' &&
+      m.parse_status !== 'unmatched',
+  )
   const total = review.length + messages.length
   const loading = loadingReview || loadingMessages
 
@@ -309,6 +370,9 @@ export function InboxPage() {
         <div className="grid items-start gap-[clamp(14px,2vw,20px)] [grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr))]">
           {needsAccount.map((m) => (
             <UnknownCardCard key={m.id} message={m} />
+          ))}
+          {settled.map((m) => (
+            <SettledCard key={m.id} message={m} />
           ))}
           {review.map((tx) => (
             <ReviewCard key={tx.id} tx={tx} />

@@ -11,6 +11,7 @@ import { formatDistanceToNow, parseISO } from 'date-fns'
 import {
   useAccounts,
   useAssignCardToAccount,
+  useAssignSenderToAccount,
   useCategories,
   useCategorise,
   useDismissMessage,
@@ -81,7 +82,13 @@ function PickChip({ label, onPress, disabled }: { label: string; onPress: () => 
   )
 }
 
-function DismissButton({ onPress }: { onPress: () => void }) {
+function DismissButton({
+  onPress,
+  label = 'Dismiss',
+}: {
+  onPress: () => void
+  label?: string
+}) {
   const colors = useColors()
   return (
     <Pressable
@@ -96,7 +103,7 @@ function DismissButton({ onPress }: { onPress: () => void }) {
         justifyContent: 'center',
       }}
     >
-      <Text style={{ color: colors.sub, fontSize: 13.5, fontWeight: '600' }}>Dismiss</Text>
+      <Text style={{ color: colors.sub, fontSize: 13.5, fontWeight: '600' }}>{label}</Text>
     </Pressable>
   )
 }
@@ -107,12 +114,13 @@ function UnknownCardCard({ message }: { message: OpenMessage }) {
   const colors = useColors()
   const { data: accounts = [] } = useAccounts()
   const assign = useAssignCardToAccount()
+  const assignSender = useAssignSenderToAccount()
   const reprocess = useReprocess()
   const dismiss = useDismissMessage()
 
   const last4 = message.pending_last4 ?? message.parsed?.last4 ?? ''
   const amount = message.parsed?.amount
-  const busy = assign.isPending || reprocess.isPending
+  const busy = assign.isPending || assignSender.isPending || reprocess.isPending
 
   return (
     <Card>
@@ -124,7 +132,9 @@ function UnknownCardCard({ message }: { message: OpenMessage }) {
       </View>
 
       <Text style={{ color: colors.ink, fontSize: 14.5, fontWeight: '700' }}>
-        Which account is •••• {last4}?
+        {last4
+          ? `Which account is •••• ${last4}?`
+          : 'Which account did this come from?'}
       </Text>
 
       <RawBody>{message.body}</RawBody>
@@ -136,10 +146,19 @@ function UnknownCardCard({ message }: { message: OpenMessage }) {
             <PickChip
               key={a.id}
               label={`${a.name}${a.last4 ? ` ••${a.last4}` : ''}`}
-              disabled={busy || !last4}
+              disabled={busy}
               onPress={async () => {
-                await assign.mutateAsync({ accountId: a.id, last4 })
-                await reprocess.mutateAsync(undefined)
+                // A quoted card teaches the card; an alert naming none — an
+                // outgoing RAAST, or a bank that masks the number past
+                // recognition — teaches the sending bank, the only durable
+                // thing left in it. Without this the phone could not answer
+                // the question at all and every button sat disabled.
+                if (last4) await assign.mutateAsync({ accountId: a.id, last4 })
+                else
+                  await assignSender.mutateAsync({
+                    accountId: a.id,
+                    sender: message.sender,
+                  })
               }}
             />
           ))}
@@ -148,8 +167,45 @@ function UnknownCardCard({ message }: { message: OpenMessage }) {
       <DismissButton onPress={() => dismiss.mutate(message.id)} />
 
       <Text style={{ color: colors.sub, fontSize: 12 }}>
-        Answering once resolves this and every future message from that card.
+        {last4
+          ? 'Answering once resolves this and every future message from that card.'
+          : `Answering once resolves this and every future alert from ${message.sender}.`}
       </Text>
+    </Card>
+  )
+}
+
+
+// --------------------------------------------- answered, waiting to be read
+
+/**
+ * A message that was waiting on you and no longer is. It stays until
+ * dismissed: answering "which account is this?" is the moment you most want
+ * to read the thing, and it used to vanish on the tap.
+ */
+function SettledCard({ message }: { message: OpenMessage }) {
+  const colors = useColors()
+  const dismiss = useDismissMessage()
+  const amount = message.parsed?.amount
+
+  return (
+    <Card>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <Tag>{`${message.sender} · ${ago(message.received_at)}`}</Tag>
+        {amount != null && (
+          <Money value={amount} style={{ marginLeft: 'auto', color: colors.ink, fontSize: 20 }} />
+        )}
+      </View>
+
+      <Text style={{ color: colors.pos, fontSize: 14.5, fontWeight: '700' }}>
+        {message.parse_status === 'duplicate'
+          ? '✓ Already had this one'
+          : '✓ Sorted — added to your ledger'}
+      </Text>
+
+      <RawBody>{message.body}</RawBody>
+
+      <DismissButton label="Done reading" onPress={() => dismiss.mutate(message.id)} />
     </Card>
   )
 }
@@ -261,6 +317,12 @@ export default function InboxScreen() {
 
   const needsAccount = messages.filter((m) => m.parse_status === 'needs_account')
   const unreadable = messages.filter((m) => m.parse_status === 'unmatched')
+  const settled = messages.filter(
+    (m) =>
+      m.resolved_at != null &&
+      m.parse_status !== 'needs_account' &&
+      m.parse_status !== 'unmatched',
+  )
   const total = review.length + messages.length
   const loading = loadingReview || loadingMessages
 
@@ -309,6 +371,9 @@ export default function InboxScreen() {
         <View style={{ gap: 16 }}>
           {needsAccount.map((m) => (
             <UnknownCardCard key={m.id} message={m} />
+          ))}
+          {settled.map((m) => (
+            <SettledCard key={m.id} message={m} />
           ))}
           {review.map((tx) => (
             <ReviewCard key={tx.id} tx={tx} />

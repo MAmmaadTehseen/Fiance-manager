@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.5"
   }
   graphql_public: {
     Tables: {
@@ -515,6 +515,7 @@ export type Database = {
           body_hash: string
           created_at: string
           device_label: string | null
+          dismissed_at: string | null
           error: string | null
           id: string
           matched_template_id: string | null
@@ -522,6 +523,7 @@ export type Database = {
           parsed: Json | null
           pending_last4: string | null
           received_at: string
+          resolved_at: string | null
           sender: string
           user_id: string
         }
@@ -530,6 +532,7 @@ export type Database = {
           body_hash: string
           created_at?: string
           device_label?: string | null
+          dismissed_at?: string | null
           error?: string | null
           id?: string
           matched_template_id?: string | null
@@ -537,6 +540,7 @@ export type Database = {
           parsed?: Json | null
           pending_last4?: string | null
           received_at?: string
+          resolved_at?: string | null
           sender: string
           user_id?: string
         }
@@ -545,6 +549,7 @@ export type Database = {
           body_hash?: string
           created_at?: string
           device_label?: string | null
+          dismissed_at?: string | null
           error?: string | null
           id?: string
           matched_template_id?: string | null
@@ -552,6 +557,7 @@ export type Database = {
           parsed?: Json | null
           pending_last4?: string | null
           received_at?: string
+          resolved_at?: string | null
           sender?: string
           user_id?: string
         }
@@ -742,7 +748,10 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      seed_new_user: {
+        Args: { p_display_name: string; p_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       account_type: "bank" | "wallet" | "cash" | "credit_card" | "savings"

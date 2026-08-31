@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getSupabase } from '../client'
+import { catchUpWaiting } from './catchUp'
 import { transactionKeys, type TransactionRow } from './useTransactions'
 import { accountKeys } from './useAccounts'
 import { ingestKeys } from './useIngest'
@@ -37,7 +38,16 @@ export function useReviewQueue() {
   })
 }
 
-/** Messages still waiting on a rule or on being told which account they are. */
+/**
+ * What the Inbox shows: messages still waiting on a rule or on being told
+ * which account they are, plus the ones just answered.
+ *
+ * An answered message stays until it is dismissed. Answering "which account is
+ * 0508?" is the moment you most want to read the thing — you have just been
+ * told a payment exists and shown nothing of what it was — and it used to
+ * disappear on the tap. `resolved_at` is what distinguishes those few from the
+ * thousands of ordinary parsed messages the Inbox must never list.
+ */
 export function useOpenMessages() {
   return useQuery({
     queryKey: ingestKeys.messages,
@@ -45,7 +55,10 @@ export function useOpenMessages() {
       const { data, error } = await getSupabase()
         .from('sms_messages')
         .select('*')
-        .in('parse_status', ['unmatched', 'needs_account'])
+        .is('dismissed_at', null)
+        .or(
+          'parse_status.in.(unmatched,needs_account),resolved_at.not.is.null',
+        )
         .order('received_at', { ascending: false })
         .limit(50)
         .returns<OpenMessage[]>()
@@ -144,6 +157,12 @@ export function useAssignCardToAccount() {
         .update({ last4 })
         .eq('id', accountId)
       if (error) throw error
+
+      // Bank alerts arrive in runs, so the same card is usually sitting in the
+      // Inbox several times over. Answering the question once answers it for
+      // all of them; being asked three times about 0508 is the app failing to
+      // learn from the first answer.
+      return { caught: await catchUpWaiting({ last4 }) }
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: accountKeys.all })
@@ -189,13 +208,15 @@ export function useAssignSenderToAccount() {
       if (readError) throw readError
 
       const senders = account?.sms_senders ?? []
-      if (senders.includes(key)) return
+      if (senders.includes(key)) return { caught: 0 }
 
       const { error } = await getSupabase()
         .from('accounts')
         .update({ sms_senders: [...senders, key] })
         .eq('id', accountId)
       if (error) throw error
+
+      return { caught: await catchUpWaiting({ sender }) }
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: accountKeys.all })
@@ -225,14 +246,24 @@ export function useCaptureFeed(limit = 100) {
   })
 }
 
-/** Drops a message we will never care about (spam, a stray personal text). */
+/**
+ * Clears a message from the Inbox — spam, a stray personal text, or one that
+ * has been answered and read.
+ *
+ * This used to overwrite `parse_status` with 'ignored', which threw away what
+ * the parser had actually decided. A booked message dismissed after reading
+ * became indistinguishable from spam the parser rejected, and the capture
+ * feed — whose entire job is showing what the templates did — was being
+ * falsified by a UI action. The verdict is the parser's; dismissal is the
+ * user's, and they are recorded separately.
+ */
 export function useDismissMessage() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (messageId: string) => {
       const { error } = await getSupabase()
         .from('sms_messages')
-        .update({ parse_status: 'ignored' })
+        .update({ dismissed_at: new Date().toISOString() })
         .eq('id', messageId)
       if (error) throw error
     },
@@ -254,7 +285,10 @@ export function useInboxCount() {
         getSupabase()
           .from('sms_messages')
           .select('id', { count: 'exact', head: true })
-          .in('parse_status', ['unmatched', 'needs_account']),
+          .in('parse_status', ['unmatched', 'needs_account'])
+          // A message left on screen to be read is not something owing the
+          // user an action, so it must not keep the badge lit.
+          .is('dismissed_at', null),
       ])
       return (review.count ?? 0) + (messages.count ?? 0)
     },

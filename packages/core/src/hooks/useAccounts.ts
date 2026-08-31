@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getSupabase } from '../client'
+import { catchUpWaiting } from './catchUp'
 import type { Account, AccountBalance, AccountUpdate } from '../types/db'
 
 export const accountKeys = {
@@ -65,6 +66,11 @@ export function useCreateAccount() {
         .select()
         .single()
       if (error) throw error
+
+      // An account is usually added *because* messages quoting it are already
+      // sitting in the Inbox unclaimed. Supplying the digits is the answer to
+      // that question, so those messages should not still be asking it.
+      if (data?.last4) await catchUpWaiting({ last4: data.last4 })
       return data
     },
     onSuccess: () => {
