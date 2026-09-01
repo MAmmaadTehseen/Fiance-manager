@@ -111,12 +111,32 @@ async function handle(req: Request): Promise<Response> {
       .select('id, sms_message_id')
       .eq('user_id', userId)
       .or('status.eq.needs_review,type.eq.transfer')
+      .neq('status', 'void')
       .not('sms_message_id', 'is', null)
       .is('split_group_id', null)
       .is('owed_amount', null)
     if (unfiledError) return json({ error: unfiledError.message }, 500)
 
-    const ids = (unfiled ?? []).map((t) => t.id)
+    // A transaction that settled someone's debt must survive.
+    //
+    // Deleting it is legal — migration 0028 makes the link clear cleanly — but
+    // the claim reopens, because the payment that closed it is gone. The
+    // replay then inserts that payment again under a NEW id, which the claim
+    // does not point at. Nothing looks broken and the ledger is simply wrong:
+    // someone who paid you back is shown as owing you again. Editing an
+    // account should not be able to do that, so these are left alone.
+    const { data: settlements, error: settlementError } = await db
+      .from('transactions')
+      .select('settled_by_id')
+      .eq('user_id', userId)
+      .not('settled_by_id', 'is', null)
+    if (settlementError) return json({ error: settlementError.message }, 500)
+    const settling = new Set(
+      (settlements ?? []).map((t) => t.settled_by_id as string),
+    )
+
+    const rebuildable = (unfiled ?? []).filter((t) => !settling.has(t.id))
+    const ids = rebuildable.map((t) => t.id)
     if (ids.length > 0) {
       const { error: dropError } = await db
         .from('transactions')
@@ -127,7 +147,7 @@ async function handle(req: Request): Promise<Response> {
     }
 
     const messageIds = [
-      ...new Set((unfiled ?? []).map((t) => t.sms_message_id as string)),
+      ...new Set(rebuildable.map((t) => t.sms_message_id as string)),
     ]
     if (messageIds.length === 0) return json({ processed: 0, results: [] })
 
