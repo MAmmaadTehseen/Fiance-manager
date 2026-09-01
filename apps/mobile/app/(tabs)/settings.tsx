@@ -71,7 +71,8 @@ export default function SettingsScreen() {
                 Connect this phone
               </Text>
               <Text style={{ color: colors.sub, fontSize: 13.5, marginTop: 3, lineHeight: 19 }}>
-                Forward bank SMS to your ledger automatically, even when Batwa is closed.
+                Catch bank SMS and the alerts banking apps push, even when
+                Batwa is closed.
               </Text>
             </View>
             <Text style={{ color: colors.sub, fontSize: 22 }}>›</Text>

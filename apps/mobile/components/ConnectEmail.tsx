@@ -90,6 +90,15 @@ export function ConnectEmail() {
           way. SadaPay and JazzCash send no email at all; those arrive only by
           SMS, which this app already reads.
         </Text>
+        {/* The rule is that banks MUST email transaction alerts — but only to
+            an address they hold. Someone who never gave their bank one
+            connects Gmail, sees nothing arrive, and concludes Batwa is
+            broken. */}
+        <Text style={{ fontSize: 12.5, color: colors.sub, lineHeight: 18 }}>
+          Your bank has to have your email address on file for any of this to
+          arrive. If nothing shows up after a day, that is usually why — add it
+          in your bank&rsquo;s app.
+        </Text>
 
         {flash === 'connected' ? (
           <Text style={{ fontSize: 12.5, fontWeight: '600', color: colors.pos }}>

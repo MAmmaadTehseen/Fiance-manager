@@ -393,8 +393,11 @@ export default function Capture() {
 
           <Text style={{ fontSize: 14, color: colors.sub, lineHeight: 20 }}>
             Notification access:{' '}
-            {status?.notificationAccess ? 'on' : 'off'} — a second way to catch
-            alerts, including banks that use their own app instead of SMS.
+            {status?.notificationAccess ? 'on' : 'off'} — worth turning on even
+            if SMS is working. Since 2025 banks are allowed to stop texting for
+            payments you make in their own app and notify you there instead,
+            and SMS alerts cost them more than they charge, so more of them are
+            moving. Wallets that never text are already only here.
           </Text>
           <Button
             colors={colors}

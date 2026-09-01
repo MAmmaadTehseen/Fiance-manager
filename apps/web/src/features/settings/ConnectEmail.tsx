@@ -71,6 +71,14 @@ export function ConnectEmail() {
           way. Wallets like SadaPay and JazzCash don&rsquo;t send email at all;
           those only arrive by SMS, which needs the Android app.
         </p>
+        {/* Banks must email alerts — but only to an address they hold. Someone
+            who never gave theirs connects Gmail, sees nothing, and concludes
+            Batwa is broken. */}
+        <p className="mt-1 text-sm text-muted-foreground">
+          Your bank needs your email address on file for any of this to arrive.
+          If nothing shows up after a day, that&rsquo;s usually why &mdash; add
+          it in your bank&rsquo;s app.
+        </p>
       </div>
 
       {flash === 'connected' && (
