@@ -30,13 +30,28 @@ export type BalanceAssertion = Tables<'balance_assertions'>
 export type Budget = Tables<'budgets'>
 export type SavingsGoal = Tables<'savings_goals'>
 
-/** Shape the ingest pipeline writes into `sms_messages.parsed`. */
+/**
+ * Shape the ingest pipeline writes into `sms_messages.parsed`.
+ *
+ * Hand-kept in step with `ParsedFields` in
+ * `supabase/functions/_shared/parser.ts` — the pipeline runs in Deno and does
+ * not share this package, so nothing enforces the match. It had already
+ * drifted: `counterpartyLast4` and `fee` were being written and were invisible
+ * to every client that read this type. If you add a field there, add it here.
+ */
 export type ParsedFields = {
   amount: number | null
   merchant: string | null
   merchantKey: string | null
   last4: string | null
+  /** The other side's account, when the message named it. */
+  counterpartyLast4: string | null
+  /** Which bank holds our side — the tie-breaker when two accounts share a last4. */
+  bank: string | null
+  /** Which bank holds the other side. */
+  counterpartyBank: string | null
   balance: number | null
+  fee: number | null
   occurredAt: string | null
   reference: string | null
 }

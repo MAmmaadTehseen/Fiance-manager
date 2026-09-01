@@ -153,7 +153,12 @@ function UnknownCardCard({ message }: { message: OpenMessage }) {
                 // recognition — teaches the sending bank, the only durable
                 // thing left in it. Without this the phone could not answer
                 // the question at all and every button sat disabled.
-                if (last4) await assign.mutateAsync({ accountId: a.id, last4 })
+                if (last4)
+                  await assign.mutateAsync({
+                    accountId: a.id,
+                    last4,
+                    bank: message.parsed?.bank ?? null,
+                  })
                 else
                   await assignSender.mutateAsync({
                     accountId: a.id,

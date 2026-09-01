@@ -159,6 +159,14 @@ export function useCategorise() {
  * Names the card a parked message referred to. Assigning `last4` to an account
  * is what lets the reprocess pass resolve this message and every future one
  * from the same card.
+ *
+ * The bank the message named is stored alongside it, when the account does not
+ * already say which bank it is at. Four digits are no longer enough on their
+ * own — two wallets opened on one phone number end the same, and the pipeline
+ * refuses to guess between them. Without recording the bank here, answering
+ * the question would achieve nothing: the message would resolve to the same
+ * ambiguity on the next pass and come straight back to the Inbox, and the
+ * user would be answering the same question forever.
  */
 export function useAssignCardToAccount() {
   const qc = useQueryClient()
@@ -166,13 +174,29 @@ export function useAssignCardToAccount() {
     mutationFn: async ({
       accountId,
       last4,
+      bank,
     }: {
       accountId: string
       last4: string
+      /** The bank this message named for its own side, if it named one. */
+      bank?: string | null
     }) => {
-      const { error } = await getSupabase()
+      const db = getSupabase()
+
+      const patch: { last4: string; institution?: string } = { last4 }
+      if (bank?.trim()) {
+        const { data: account } = await db
+          .from('accounts')
+          .select('institution')
+          .eq('id', accountId)
+          .single()
+        // Never overwrite a bank the user set themselves.
+        if (!account?.institution?.trim()) patch.institution = bank.trim()
+      }
+
+      const { error } = await db
         .from('accounts')
-        .update({ last4 })
+        .update(patch)
         .eq('id', accountId)
       if (error) throw error
 

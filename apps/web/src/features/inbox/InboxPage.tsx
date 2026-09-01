@@ -208,7 +208,13 @@ function UnknownCardCard({ message }: { message: OpenMessage }) {
                 // sending bank instead, which is the only durable thing left
                 // in it.
                 if (last4) {
-                  await assign.mutateAsync({ accountId: a.id, last4 })
+                  await assign.mutateAsync({
+                    accountId: a.id,
+                    last4,
+                    // Recorded with the digits, because the digits alone no
+                    // longer identify an account.
+                    bank: message.parsed?.bank ?? null,
+                  })
                 } else {
                   await assignSender.mutateAsync({
                     accountId: a.id,
