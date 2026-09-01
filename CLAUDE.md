@@ -155,6 +155,8 @@ the environment's variables — **same names**: `SUPABASE_ACCESS_TOKEN`,
 
 Web + mobile live. **Email capture works end-to-end** (Gmail OAuth + 15-min
 sync + templates; ~100% of real bank emails parse — Faysal/Meezan RAAST/IBFT).
-Dev environment stood up (`develop` → `dev.batwa.online`). Open work in
-`TODO.md`: enable email on prod (add `GOOGLE_CLIENT_SECRET`), add Connect Gmail
-to the mobile app, more bank email templates.
+Dev environment stood up (`develop` → `dev.batwa.online`). Connect Gmail now
+works from the phone too: `gmail-connect` accepts the app's own scheme
+(`batwa://` / `batwadev://`) as a return target, so Android hands the user back
+after Google's consent screen. Open work in `TODO.md`: enable email on prod
+(add `GOOGLE_CLIENT_SECRET`), more bank email templates.

@@ -6,6 +6,7 @@ import { Pressable, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import { getSupabase } from '@batwa/core'
 import { Card, Screen, ScreenHeader } from '../../components/ui'
+import { ConnectEmail } from '../../components/ConnectEmail'
 import { ManageCategories } from '../../components/ManageCategories'
 import { ManagePayees } from '../../components/ManagePayees'
 import { useColors, useTheme } from '../../lib/useTheme'
@@ -77,6 +78,9 @@ export default function SettingsScreen() {
           </View>
         </Card>
       </Pressable>
+
+      {/* ------------------------------------------------------ email */}
+      <ConnectEmail />
 
       {/* ------------------------------------------------- categories */}
       <ManageCategories />

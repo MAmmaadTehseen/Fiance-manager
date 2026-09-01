@@ -32,6 +32,30 @@ const SCOPE = 'openid email https://www.googleapis.com/auth/gmail.readonly'
  * session they started with does not exist. The web app always passes its own
  * origin; this only covers a caller that does not.
  */
+/**
+ * Where Google is allowed to drop the user afterwards.
+ *
+ * The Android app has no origin to come back to, so it hands over its own
+ * scheme — `batwadev://settings` — and Android reopens the app on that URL.
+ * Without this the phone could never finish the flow: the redirect was
+ * required to be http(s), so an app scheme was silently discarded and the user
+ * was bounced to the website instead, on a device where they had been using
+ * the app.
+ *
+ * Plain http is now confined to localhost. Anything else was accepted before,
+ * which meant a caller could send someone to any site at all once the flow
+ * finished — nothing leaks (the token is stored server-side and the state is
+ * signed) but landing on a stranger's page wearing `?gmail=connected` is not
+ * something this function should offer to arrange.
+ */
+const APP_SCHEMES = ['batwa://', 'batwadev://']
+
+function isAllowedRedirect(value: string): boolean {
+  if (APP_SCHEMES.some((s) => value.startsWith(s))) return true
+  if (value.startsWith('https://')) return true
+  return /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(value)
+}
+
 const PROD_SUPABASE_REF = 'byjytsoeayopmcaabgyj'
 const DEFAULT_APP = SUPABASE_URL.includes(PROD_SUPABASE_REF)
   ? 'https://batwa.online'
@@ -136,7 +160,7 @@ async function handleStart(req: Request): Promise<Response> {
     const bodyText = await req.text()
     if (bodyText) {
       const parsed = JSON.parse(bodyText)
-      if (typeof parsed.redirect === 'string' && /^https?:\/\//.test(parsed.redirect)) {
+      if (typeof parsed.redirect === 'string' && isAllowedRedirect(parsed.redirect)) {
         ret = parsed.redirect.replace(/\/+$/, '')
       }
     }
