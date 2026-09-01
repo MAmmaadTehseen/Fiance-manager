@@ -9,6 +9,7 @@
  */
 
 import {
+  bankFromIban,
   parseSms,
   parseAmount,
   parseDateTime,
@@ -519,6 +520,49 @@ for (const c of emails) {
   eq(r.fields.occurredAt, c.when, `${c.label}: date and time`)
   eq(r.fields.merchant, c.payee, `${c.label}: payee`)
   eq(r.fields.last4, c.last4, `${c.label}: account`)
+}
+
+console.log('== the bank is read from the IBAN when no bank is named ==')
+// An IBAN survives masking better than anything else in a bank alert:
+// PK35MEZN******0508 hides the account and keeps MEZN. That is the only bank
+// hint some messages carry, and without it two accounts sharing a last4 —
+// two wallets on one phone number — cannot be told apart.
+{
+  const meezan = parseSms(
+    'Meezan Bank Alert <no-reply@meezanbank.com>',
+    ': Dear Customer, PKR 7,400.00 received to your account xxx4444 with the ' +
+      'following details: Beneficiary Account : A.KHAN AC# RAAST PYMT ' +
+      'PK94FAYS34307 Transaction Date : 24-Aug-2026 Transaction Time : 17:30 :',
+    templates,
+  )
+  if (meezan.matched && meezan.kind !== 'ignore') {
+    eq(meezan.fields.counterpartyBank, 'Faysal Bank', 'PK94FAYS -> Faysal Bank')
+  } else {
+    no('Meezan credit did not parse', meezan)
+  }
+
+  // A bank written in words outranks the code: it is the more specific claim,
+  // and for a wallet it is the ONLY thing that separates two accounts sharing
+  // a phone number.
+  const named = parseSms(
+    'Faysal Bank Limited <efbl@faysalbank.com>',
+    'Dear Customer, Your account has been debited via Inter Bank Funds ' +
+      'Transfer. Below are the transaction details: Receiver Name:: A HOLDER : ' +
+      'Receiver Account Number:: 0304***9904 : Receiver Bank:: SadaPay : ' +
+      'Sender Account Number:: 3430********5555 : Sender Bank:: FBL: ' +
+      'Transaction Amount:: PKR 1,000.00 : Date and Time:: 01-SEP-2026 12:58 PM',
+    templates,
+  )
+  if (named.matched && named.kind !== 'ignore') {
+    eq(named.fields.counterpartyBank, 'SadaPay', 'a written bank name wins')
+    eq(named.fields.counterpartyLast4, '9904', 'wallet number still read')
+  } else {
+    no('Faysal debit did not parse', named)
+  }
+
+  eq(bankFromIban('PK35MEZN******0508'), 'Meezan Bank', 'masked IBAN -> bank')
+  eq(bankFromIban('3430********5555'), null, 'a bare account number names no bank')
+  eq(bankFromIban('PK99ZZZZ0000'), null, 'an unknown code stays silent')
 }
 
 console.log('== email priced only in a foreign currency is never booked in PKR ==')

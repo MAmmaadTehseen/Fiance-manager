@@ -326,6 +326,36 @@ export function extractField(
  * Kept verbatim apart from trimming; matching against the user's own accounts
  * is the pipeline's job, and it needs the real words to work with.
  */
+/**
+ * Pakistani IBAN institution codes seen in real alerts.
+ *
+ * An IBAN survives masking better than anything else in a bank message:
+ * `PK35MEZN******0508` hides the account but keeps `MEZN`. That makes it a
+ * bank hint even when the message never writes a bank name — which Meezan's
+ * alerts, among others, do not.
+ *
+ * Deliberately only the codes actually observed in captured messages. A wrong
+ * guess here would quietly mislabel an account, and the cost of an absent code
+ * is merely that this hint stays silent, so the list grows from evidence
+ * rather than from a directory someone might have mistyped.
+ */
+const IBAN_BANKS: Record<string, string> = {
+  FAYS: 'Faysal Bank',
+  MEZN: 'Meezan Bank',
+  HABB: 'HBL Habib Bank',
+  MUCB: 'MCB Bank',
+  UNIL: 'UBL United Bank',
+  SONE: 'Soneri Bank',
+  JCMA: 'JazzCash Mobilink',
+}
+
+/** The bank an account string names through its IBAN, if it carries one. */
+export function bankFromIban(raw: string | null): string | null {
+  if (!raw) return null
+  const m = raw.toUpperCase().match(/\bPK\d{2}([A-Z]{4})/)
+  return m ? (IBAN_BANKS[m[1]!] ?? null) : null
+}
+
 export function cleanBankName(raw: string | null): string | null {
   if (!raw) return null
   const cleaned = raw.replace(/\s+/g, ' ').trim()
@@ -426,6 +456,10 @@ export function parseSms(
     // before that dated "on", so re-extend it. Only a dated "on" is a real
     // boundary; "on" inside a name never is.
     const merchantRaw = reextendMerchant(merchantRawUncut, f.merchant, text)
+    // Kept unnormalised: the last four digits are what identifies the account,
+    // but the IBAN around them is what identifies the bank.
+    const rawOwnAccount = extractField(f.last4, text)
+    const rawOtherAccount = extractField(f.counterparty_last4, text)
     const when = parseDateTime(extractField(f.datetime, text) ?? undefined)
 
     return {
@@ -436,14 +470,14 @@ export function parseSms(
         amount,
         merchant: displayMerchant(merchantRaw),
         merchantKey: normalizeMerchant(merchantRaw),
-        last4: normalizeLast4(extractField(f.last4, text)),
-        counterpartyLast4: normalizeLast4(
-          extractField(f.counterparty_last4, text),
-        ),
-        bank: cleanBankName(extractField(f.bank, text)),
-        counterpartyBank: cleanBankName(
-          extractField(f.counterparty_bank, text),
-        ),
+        last4: normalizeLast4(rawOwnAccount),
+        counterpartyLast4: normalizeLast4(rawOtherAccount),
+        // A written bank name wins; the IBAN code answers for the messages
+        // that name no bank at all.
+        bank: cleanBankName(extractField(f.bank, text)) ?? bankFromIban(rawOwnAccount),
+        counterpartyBank:
+          cleanBankName(extractField(f.counterparty_bank, text)) ??
+          bankFromIban(rawOtherAccount),
         balance: parseAmount(extractField(f.balance, text) ?? undefined),
         fee: parseAmount(extractField(f.fee, text) ?? undefined),
         occurredAt: when ? when.toISOString() : null,

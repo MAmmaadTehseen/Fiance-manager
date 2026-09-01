@@ -49,6 +49,47 @@ the cross-channel dedup notes in `_shared/pipeline.ts`.
 
 MacroDroid / third-party SMS forwarders are **retired** — do not reintroduce.
 
+### What the regulator has already decided (researched Sep 2026)
+
+Two SBP circulars set the ground these channels stand on, and they point in
+opposite directions — which is the strongest argument for running all three.
+
+- **PSD Circular 09 of 2018.** Banks must send transaction alerts **free, by
+  SMS *and* email**, immediately, for card/ATM/POS/internet transactions. Email
+  capture therefore rests on an obligation, not a courtesy — but only where the
+  bank *holds* an email address, so a user who never gave theirs one will see
+  nothing until they do. Worth saying in the Connect Gmail flow.
+- **PSP&OD Circular 01 of 2024** (effective 1 Jan 2025). For transactions made
+  in a bank's **own app**, banks may drop SMS and notify by **push/in-app** and
+  email instead — and must keep those notifications **always enabled**. So the
+  notification listener is not a wallet stopgap: it is the channel bank alerts
+  are actively migrating onto. Economics push the same way — banks collected
+  ~Rs 18.7bn in SMS alert fees in 2025 and paid telcos ~Rs 25.6bn, a loss now
+  before a Senate inquiry.
+
+Expect SMS coverage to **shrink for app-initiated transactions** while
+remaining mandatory for card and ATM. Fragmenting by transaction origin is
+exactly the case for parallel capture plus dedupe.
+
+### Identifiers, and why `last4` is not enough
+
+- **Branchless wallets** (Easypaisa, JazzCash, UPaisa) — the **mobile number IS
+  the account number**, so two wallets on one SIM share a last4. They *also*
+  have a derived IBAN, so one wallet can be addressed two ways.
+- **EMI wallets** (SadaPay, NayaPay, Keenu, Digitt+, OneZapp) — real **IBANs**,
+  with the mobile number only a Raast alias. Their alerts read like a bank's.
+- **Raast** addresses by Raast ID (a mobile number linked to one IBAN) or IBAN.
+- A masked IBAN keeps its **4-letter bank code** (`PK35MEZN******0508`), which
+  is often the only bank hint in the message. `IBAN_BANKS` in `parser.ts` maps
+  the codes seen in real messages — extend it from evidence, never from a
+  directory.
+
+Bank names are a moving target: Summit → Bank Makramah, Silkbank → UBL, Telenor
+Microfinance → Easypaisa Bank, and a constitutional deadline of **1 Jan 2028**
+converts domestic banks to Islamic banking. **Key templates on structure, not
+on brand names.** This is why the 12 `generic` templates match `.*` and
+bank-specific ones are only refinements.
+
 ## The pipeline (shared by every channel)
 
 `supabase/functions/_shared/pipeline.ts` (`processStoredMessage`) +
