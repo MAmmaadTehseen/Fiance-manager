@@ -18,6 +18,10 @@ export type ParserField =
   | 'last4'
   /** The other side's account, when the message names it. */
   | 'counterparty_last4'
+  /** Which bank holds the user's own side, e.g. "Sender Bank:: FBL". */
+  | 'bank'
+  /** Which bank holds the other side, e.g. "Receiver Bank:: SadaPay". */
+  | 'counterparty_bank'
   | 'balance'
   | 'datetime'
   | 'reference'
@@ -58,6 +62,13 @@ export type ParsedFields = {
   balance: number | null
   /** A charge levied alongside the transfer, booked separately. */
   fee: number | null
+  /** Which bank holds the user's own side, when the message names it. */
+  bank: string | null
+  /**
+   * Which bank holds the other side. The tie-breaker when four digits are not
+   * unique — two wallets on one phone number share a last4.
+   */
+  counterpartyBank: string | null
   /** ISO string, or null when the message carried no usable timestamp. */
   occurredAt: string | null
   reference: string | null
@@ -303,6 +314,24 @@ export function extractField(
  * identifier, so collapse anything long to its final four digits and let both
  * sides meet in the middle.
  */
+/**
+ * The bank named beside an account number, tidied for comparison.
+ *
+ * Four digits stop identifying an account the moment two of them share a
+ * number — and in Pakistan that is normal, not exotic: a wallet's "account
+ * number" is a phone number, so JazzCash and SadaPay opened on the same SIM
+ * both end 9904. The message says which one ("Receiver Bank:: SadaPay"), so
+ * the name is worth keeping as the tie-breaker.
+ *
+ * Kept verbatim apart from trimming; matching against the user's own accounts
+ * is the pipeline's job, and it needs the real words to work with.
+ */
+export function cleanBankName(raw: string | null): string | null {
+  if (!raw) return null
+  const cleaned = raw.replace(/\s+/g, ' ').trim()
+  return cleaned.length > 1 ? cleaned : null
+}
+
 export function normalizeLast4(raw: string | null): string | null {
   if (!raw) return null
   const digits = raw.replace(/\D/g, '')
@@ -321,6 +350,8 @@ const EMPTY_FIELDS: ParsedFields = {
   merchantKey: null,
   last4: null,
   counterpartyLast4: null,
+  bank: null,
+  counterpartyBank: null,
   balance: null,
   fee: null,
   occurredAt: null,
@@ -408,6 +439,10 @@ export function parseSms(
         last4: normalizeLast4(extractField(f.last4, text)),
         counterpartyLast4: normalizeLast4(
           extractField(f.counterparty_last4, text),
+        ),
+        bank: cleanBankName(extractField(f.bank, text)),
+        counterpartyBank: cleanBankName(
+          extractField(f.counterparty_bank, text),
         ),
         balance: parseAmount(extractField(f.balance, text) ?? undefined),
         fee: parseAmount(extractField(f.fee, text) ?? undefined),

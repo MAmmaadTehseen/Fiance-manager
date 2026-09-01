@@ -97,23 +97,81 @@ export type PipelineResult = {
   error?: string
 }
 
-type OwnAccount = { id: string; currency: string }
+type OwnAccount = {
+  id: string
+  currency: string
+  /** Both carried so the bank named in a message can be matched against
+      either — a wallet is often set up with only a name. */
+  name?: string | null
+  institution?: string | null
+}
 
 /** Looks up one of the user's own accounts by its stored short identifier. */
+/**
+ * Words that say nothing about which institution is meant.
+ *
+ * "Jazz Cash Mobilink" and an account called "Jazzcash Wallet" are the same
+ * company described two ways; stripping the filler and the spaces leaves
+ * "jazzcash" on both sides.
+ */
+const BANK_NOISE =
+  /\b(bank|banking|ltd|limited|pvt|private|wallet|account|mobilink|pakistan|the)\b/g
+
+function bankKey(value: string | null | undefined): string {
+  if (!value) return ''
+  return value.toLowerCase().replace(BANK_NOISE, '').replace(/[^a-z0-9]/g, '')
+}
+
+/** Is this account plausibly at the bank the message named? */
+function matchesBank(account: OwnAccount, hint: string): boolean {
+  const want = bankKey(hint)
+  if (!want) return false
+  for (const candidate of [account.institution, account.name]) {
+    const have = bankKey(candidate)
+    if (!have) continue
+    if (have === want || have.includes(want) || want.includes(have)) return true
+  }
+  return false
+}
+
+/**
+ * The user's account holding a given number — with the bank as tie-breaker.
+ *
+ * Four digits stop identifying an account the moment two of them end the same,
+ * and in Pakistan that is ordinary rather than exotic: a wallet's account
+ * number IS a phone number, so JazzCash and SadaPay opened on one SIM both end
+ * 9904. Picking whichever row came back first books real money against the
+ * wrong wallet and silently corrupts two balances at once.
+ *
+ * The message already carries the answer — "Receiver Bank:: SadaPay" — so when
+ * several accounts share the digits, the named bank decides. If it does not
+ * decide, this returns nothing and the message goes to the Inbox to be asked
+ * about. That is deliberate: an even chance of being wrong is worse than a
+ * question, because a wrong answer here is invisible.
+ */
 async function findAccountByLast4(
   db: SupabaseClient,
   userId: string,
   last4: string | null,
+  bankHint?: string | null,
 ): Promise<OwnAccount | null> {
   if (!last4) return null
   const { data } = await db
     .from('accounts')
-    .select('id, currency')
+    .select('id, currency, name, institution')
     .eq('user_id', userId)
     .eq('last4', last4)
     .is('archived_at', null)
-    .maybeSingle()
-  return data ?? null
+
+  const accounts = data ?? []
+  if (accounts.length === 0) return null
+  if (accounts.length === 1) return accounts[0]!
+
+  if (bankHint) {
+    const named = accounts.filter((a) => matchesBank(a, bankHint))
+    if (named.length === 1) return named[0]!
+  }
+  return null
 }
 
 /**
@@ -128,6 +186,7 @@ async function resolveAccount(
   userId: string,
   last4: string | null,
   sender: string,
+  bankHint?: string | null,
 ): Promise<OwnAccount | null> {
   // 1. The message named the account outright.
   if (last4) {
@@ -135,7 +194,7 @@ async function resolveAccount(
     // guesses, and a guess here posts real money to the wrong account without
     // saying so. An unknown card is a question, not a default — answering it
     // once in the inbox teaches it permanently.
-    return await findAccountByLast4(db, userId, last4)
+    return await findAccountByLast4(db, userId, last4, bankHint)
   }
 
   // 2. Outgoing alerts name only the recipient, so fall back to which bank
@@ -269,7 +328,13 @@ export async function processStoredMessage(
   const fields = result.fields
   const occurredAt = fields.occurredAt ?? receivedAt
 
-  const account = await resolveAccount(db, userId, fields.last4, message.sender)
+  const account = await resolveAccount(
+    db,
+    userId,
+    fields.last4,
+    message.sender,
+    fields.bank,
+  )
   if (!account) {
     return await finish(
       {
@@ -298,6 +363,7 @@ export async function processStoredMessage(
     db,
     userId,
     fields.counterpartyLast4,
+    fields.counterpartyBank,
   )
   const isInternalTransfer =
     ownCounterparty !== null && ownCounterparty.id !== account.id

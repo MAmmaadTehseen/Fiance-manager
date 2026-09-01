@@ -97,12 +97,23 @@ async function handle(req: Request): Promise<Response> {
   // decision. A correctly-detected transfer is already 'cleared', so this
   // never disturbs one that worked.
   if (payload.rebuild) {
+    // Transfers are included even though they are 'cleared', because nothing
+    // about that state came from the user: the pipeline clears a transfer the
+    // moment it detects one, and detection is exactly what a new account
+    // changes. A transfer booked against the wrong wallet would otherwise be
+    // permanent, being neither `needs_review` nor something anyone touched.
+    // Rows carrying the user's own work — a split, a claim — are left alone
+    // whatever their state. `note` is NOT such a marker: the pipeline writes
+    // one itself on most rows, so treating it as evidence of a human edit
+    // excluded everything and the rebuild silently did nothing.
     const { data: unfiled, error: unfiledError } = await db
       .from('transactions')
       .select('id, sms_message_id')
       .eq('user_id', userId)
-      .eq('status', 'needs_review')
+      .or('status.eq.needs_review,type.eq.transfer')
       .not('sms_message_id', 'is', null)
+      .is('split_group_id', null)
+      .is('owed_amount', null)
     if (unfiledError) return json({ error: unfiledError.message }, 500)
 
     const ids = (unfiled ?? []).map((t) => t.id)
